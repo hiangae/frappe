@@ -16,11 +16,14 @@ frappe.ui.form.on("Server Script", {
 			});
 		}
 
-		frm.call("get_autocompletion_items")
-			.then((r) => r.message)
-			.then((items) => {
-				frm.set_df_property("script", "autocompletions", items);
-			});
+		setTimeout(() => {
+			frappe
+				.call("frappe.core.doctype.server_script.server_script.get_autocompletion_items")
+				.then((r) => r.message)
+				.then((items) => {
+					frm.set_df_property("script", "autocompletions", items);
+				});
+		}, 100);
 
 		frm.trigger("check_safe_exec");
 	},
@@ -72,20 +75,23 @@ if doc.allocated_to:
 # retreive payment session state
 ps = doc.flags.payment_session
 
-if ps.changed: # could be an idempotent run
-	if ps.flags.status_changed_to in ps.flowstates.success:
+if ps.is_success:
+	if ps.changed: # could be an idempotent run
 		doc.set_as_paid()
-		# custom process return values
-		doc.flags.payment_result = {
-			"message": "Thank you for your payment",
-			"action": {"href": "https://shop.example.com", "label": "Return to shop"},
-		}
-	if ps.flags.status_changed_to in ps.flowstates.pre_authorized:
-		# do something else
-	if ps.flags.status_changed_to in ps.flowstates.processing:
-		# do something else
-	if ps.flags.status_changed_to in ps.flowstates.declined:
-		# do something else
+	# custom process return values
+	doc.flags.payment_session.result = {
+		"message": "Thank you for your payment",
+		"action": {"href": "https://shop.example.com", "label": "Return to shop"},
+	}
+if ps.is_pre_authorized:
+	if ps.changed: # could be an idempotent run
+		...
+if ps.is_processing:
+	if ps.changed: # could be an idempotent run
+		...
+if ps.is_declined:
+	if ps.changed: # could be an idempotent run
+		...
 </code>
 </pre>
 <p>The <i>On Payment Failed</i> (<code>on_payment_failed</code>) event only transports the error message which the controller implementation had extracted from the transaction.</p>
@@ -122,6 +128,21 @@ conditions = f'tenant_id = {tenant_id}'
 select name from \`tabPerson\`
 where tenant_id = 2
 order by creation desc
+</code></pre>
+
+<hr>
+
+<h4>Workflow Task</h4>
+<p>Execute when a particular <a href="/app/workflow-action-master">Workflow Action Master</a> is executed.</p>
+<p>Gets the document which the action is being applied on in the <code>doc</code> variable.</p>
+<code><pre>
+# create a customer with the same name as the given document
+
+customer = frappe.new_doc("Customer")
+customer.customer_name = doc.first_name + " " + doc.last_name # we get this from the workflow action
+customer.customer_type = "Company"
+
+c.save()
 </code></pre>
 `);
 	},

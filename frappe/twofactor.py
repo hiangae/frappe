@@ -133,7 +133,7 @@ def two_factor_is_enabled_for_(user):
 def get_otpsecret_for_(user):
 	"""Set OTP Secret for user even if not set."""
 	if otp_secret := get_default(user + "_otpsecret"):
-		return decrypt(otp_secret)
+		return decrypt(otp_secret, key=f"{user}.otpsecret")
 
 	otp_secret = b32encode(os.urandom(10)).decode("utf-8")
 	set_default(user + "_otpsecret", encrypt(otp_secret))
@@ -302,6 +302,11 @@ def get_link_for_qrcode(user, totp_uri):
 
 def send_token_via_sms(otpsecret, token=None, phone_no=None):
 	"""Send token as sms to user."""
+
+	send_token_hook_methods = frappe.get_hooks("send_token_via_sms")
+	if send_token_hook_methods:
+		return frappe.get_attr(send_token_hook_methods[-1])(otpsecret, token, phone_no)
+
 	try:
 		from frappe.core.doctype.sms_settings.sms_settings import send_request
 	except Exception:
@@ -344,30 +349,14 @@ def send_token_via_email(user, token, otp_secret, otp_issuer, subject=None, mess
 	hotp = pyotp.HOTP(otp_secret)
 	otp = hotp.at(int(token))
 	template_args = {"otp": otp, "otp_issuer": otp_issuer}
-	if not subject:
-		subject = get_email_subject_for_2fa(template_args)
-	if not message:
-		message = get_email_body_for_2fa(template_args)
 
-	email_args = {
-		"recipients": user_email,
-		"sender": None,
-		"subject": subject,
-		"message": message,
-		"header": [_("Verfication Code"), "blue"],
-		"delayed": False,
-		"retry": 3,
-	}
-
-	enqueue(
-		method=frappe.sendmail,
-		queue="short",
-		timeout=300,
-		event=None,
-		is_async=True,
-		job_name=None,
-		now=False,
-		**email_args,
+	frappe.sendmail(
+		recipients=user_email,
+		subject=subject or get_email_subject_for_2fa(template_args),
+		message=message or get_email_body_for_2fa(template_args),
+		header=[_("Verification Code"), "blue"],
+		delayed=False,
+		retry=3,
 	)
 	return True
 

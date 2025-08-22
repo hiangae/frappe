@@ -4,11 +4,11 @@ import frappe
 from frappe.core.doctype.user_permission.test_user_permission import create_user
 from frappe.defaults import *
 from frappe.query_builder.utils import db_type_is
+from frappe.tests import IntegrationTestCase
 from frappe.tests.test_query_builder import run_only_if
-from frappe.tests.utils import FrappeTestCase
 
 
-class TestDefaults(FrappeTestCase):
+class TestDefaults(IntegrationTestCase):
 	def test_global(self):
 		clear_user_default("key1")
 		set_global_default("key1", "value1")
@@ -73,7 +73,7 @@ class TestDefaults(FrappeTestCase):
 	@run_only_if(db_type_is.MARIADB)
 	def test_user_permission_defaults(self):
 		# Create user permission
-		create_user("user_default_test@example.com", "Blogger")
+		create_user("user_default_test@example.com", "Website Manager")
 		frappe.set_user("user_default_test@example.com")
 		set_global_default("Country", "")
 		clear_user_default("Country")

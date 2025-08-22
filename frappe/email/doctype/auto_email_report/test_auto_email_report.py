@@ -1,16 +1,17 @@
 # Copyright (c) 2015, Frappe Technologies and Contributors
 # License: MIT. See LICENSE
 import json
+from io import BytesIO
+
+from pypdf import PdfReader
 
 import frappe
-from frappe.tests.utils import FrappeTestCase
+from frappe.tests import IntegrationTestCase
 from frappe.utils import add_to_date, get_link_to_form, today
 from frappe.utils.data import is_html
 
-# test_records = frappe.get_test_records('Auto Email Report')
 
-
-class TestAutoEmailReport(FrappeTestCase):
+class TestAutoEmailReport(IntegrationTestCase):
 	def test_auto_email(self):
 		frappe.delete_doc("Auto Email Report", "Permitted Documents For User")
 
@@ -29,6 +30,11 @@ class TestAutoEmailReport(FrappeTestCase):
 		auto_email_report.format = "XLSX"
 
 		data = auto_email_report.get_report_content()
+
+		auto_email_report.format = "PDF"
+
+		data = auto_email_report.get_report_content()
+		PdfReader(stream=BytesIO(data))
 
 	def test_dynamic_date_filters(self):
 		auto_email_report = get_auto_email_report()

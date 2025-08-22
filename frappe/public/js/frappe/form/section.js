@@ -27,13 +27,13 @@ export default class Section {
 
 	make() {
 		let make_card = this.card_layout;
-		this.wrapper = $(`<div class="row
-				${this.df.is_dashboard_section ? "form-dashboard-section" : "form-section"}
+		this.wrapper = $(`<div class=
+				"${this.df.is_dashboard_section ? "form-dashboard-section" : "form-section"}
 				${make_card ? "card-section" : ""}" data-fieldname="${this.df.fieldname}">
 			`).appendTo(this.parent);
 
 		if (this.df) {
-			if (this.df.label) {
+			if (this.df.label && !this.df.hide_label) {
 				this.make_head();
 			}
 			if (this.df.description) {
@@ -78,8 +78,14 @@ export default class Section {
 			this.collapse_link = this.head.on("click", () => {
 				this.collapse();
 			});
+			const me = this;
+			this.collapse_link.enterKey(function () {
+				me.collapse();
+			});
 			this.set_icon();
 			this.indicator.show();
+			this.head.attr("tabindex", 0);
+			this.indicator.attr("tabindex", 0);
 		}
 	}
 

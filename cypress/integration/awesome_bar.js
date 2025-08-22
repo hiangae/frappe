@@ -4,14 +4,16 @@ context("Awesome Bar", () => {
 		cy.login();
 		cy.visit("/app/todo"); // Make sure ToDo filters are cleared.
 		cy.clear_filters();
-		cy.visit("/app/blog-post"); // Make sure Blog Post filters are cleared.
+		cy.visit("/app/web-page"); // Make sure Blog Post filters are cleared.
 		cy.clear_filters();
-		cy.visit("/app/website"); // Go to some other page.
+		cy.visit("/app/build"); // Go to some other page.
 	});
 
 	beforeEach(() => {
-		cy.get(".navbar .navbar-home").click();
-		cy.findByPlaceholderText("Search or type a command (Ctrl + G)").as("awesome_bar");
+		let txt = `Search or type a command (${
+			window.navigator.platform === "MacIntel" ? "⌘" : "Ctrl"
+		} + K)`;
+		cy.findByPlaceholderText(txt).as("awesome_bar");
 		cy.get("@awesome_bar").type("{selectall}");
 	});
 
@@ -34,14 +36,14 @@ context("Awesome Bar", () => {
 		cy.wait(150); // Wait a bit before hitting enter.
 		cy.get("@awesome_bar").type("{enter}");
 		cy.get(".title-text").should("contain", "To Do");
-		cy.wait(200); // Wait a bit longer before checking the filter.
-		cy.get('[data-original-title="ID"] > input').should("have.value", "%test%");
+		cy.wait(400); // Wait a bit longer before checking the filter.
+		cy.get('[data-original-title="ID"]:visible > input').should("have.value", "%test%");
 
 		// filter preserved, now finds something else
 		cy.visit("/app/todo");
 		cy.get(".title-text").should("contain", "To Do");
 		cy.wait(200); // Wait a bit longer before checking the filter.
-		cy.get('[data-original-title="ID"] > input').as("filter");
+		cy.get('[data-original-title="ID"]:visible > input').as("filter");
 		cy.get("@filter").should("have.value", "%test%");
 		cy.get("@awesome_bar").type("anothertest in todo");
 		cy.wait(200); // Wait a bit longer before hitting enter.
@@ -51,19 +53,19 @@ context("Awesome Bar", () => {
 	});
 
 	it("navigates to another doctype, filter not bleeding", () => {
-		cy.get("@awesome_bar").type("blog post");
+		cy.get("@awesome_bar").type("web page");
 		cy.wait(150); // Wait a bit before hitting enter.
 		cy.get("@awesome_bar").type("{enter}");
-		cy.get(".title-text").should("contain", "Blog Post");
+		cy.get(".title-text").should("contain", "Web Page");
 		cy.wait(200); // Wait a bit longer before checking the filter.
 		cy.location("search").should("be.empty");
 	});
 
 	it("navigates to new form", () => {
-		cy.get("@awesome_bar").type("new blog post");
+		cy.get("@awesome_bar").type("new web page");
 		cy.wait(150); // Wait a bit before hitting enter
 		cy.get("@awesome_bar").type("{enter}");
-		cy.get(".title-text:visible").should("have.text", "New Blog Post");
+		cy.get(".title-text:visible").should("have.text", "New Web Page");
 	});
 
 	it("calculates math expressions", () => {

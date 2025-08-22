@@ -4,6 +4,13 @@ frappe.ui.form.ControlDuration = class ControlDuration extends frappe.ui.form.Co
 		this.make_picker();
 	}
 
+	validate(value) {
+		if (!value) {
+			return null;
+		}
+		return super.validate(value);
+	}
+
 	make_picker() {
 		this.inputs = [];
 		this.set_duration_options();
@@ -13,19 +20,29 @@ frappe.ui.form.ControlDuration = class ControlDuration extends frappe.ui.form.Co
 			</div>`
 		);
 		this.$wrapper.append(this.$picker);
-		this.build_numeric_input("days", this.duration_options.hide_days);
-		this.build_numeric_input("hours", false);
-		this.build_numeric_input("minutes", false);
-		this.build_numeric_input("seconds", this.duration_options.hide_seconds);
+		this.build_numeric_input(
+			"days",
+			this.duration_options.hide_days,
+			0,
+			__("Days", null, "Duration")
+		);
+		this.build_numeric_input("hours", false, 0, __("Hours", null, "Duration"));
+		this.build_numeric_input("minutes", false, 0, __("Minutes", null, "Duration"));
+		this.build_numeric_input(
+			"seconds",
+			this.duration_options.hide_seconds,
+			0,
+			__("Seconds", null, "Duration")
+		);
 		this.set_duration_picker_value(this.value);
 		this.$picker.hide();
 		this.bind_events();
 		this.refresh();
 	}
 
-	build_numeric_input(label, hidden, max) {
+	build_numeric_input(name, hidden, max, label) {
 		let $duration_input = $(`
-			<input class="input-sm duration-input" data-duration="${label}" type="number" min="0" value="0">
+			<input class="input-sm duration-input" data-duration="${name}" type="number" min="0" value="0">
 		`);
 
 		let $input = $(`<div class="row duration-row"></div>`).prepend($duration_input);
@@ -34,11 +51,11 @@ frappe.ui.form.ControlDuration = class ControlDuration extends frappe.ui.form.Co
 			$duration_input.attr("max", max);
 		}
 
-		this.inputs[label] = $duration_input;
+		this.inputs[name] = $duration_input;
 
 		let $control = $(`
 			<div class="col duration-col">
-				<div class="row duration-row duration-label">${__(label)}</div>
+				<div class="row duration-row duration-label">${label}</div>
 			</div>`);
 
 		if (hidden) {
@@ -53,7 +70,7 @@ frappe.ui.form.ControlDuration = class ControlDuration extends frappe.ui.form.Co
 	}
 
 	set_duration_picker_value(value) {
-		let total_duration = frappe.utils.seconds_to_duration(value, this.duration_options);
+		let total_duration = frappe.utils.seconds_to_duration(value || 0, this.duration_options);
 
 		if (this.$picker) {
 			Object.keys(total_duration).forEach((duration) => {
@@ -101,6 +118,7 @@ frappe.ui.form.ControlDuration = class ControlDuration extends frappe.ui.form.Co
 				// blur event was not due to duration inputs
 				this.$picker.hide();
 			}
+			this.set_formatted_input(this.value);
 		});
 	}
 
@@ -109,7 +127,29 @@ frappe.ui.form.ControlDuration = class ControlDuration extends frappe.ui.form.Co
 	}
 
 	parse(value) {
-		return !value ? "" : value;
+		if (!value) {
+			return "";
+		} else if (/^\s*\d+\s*$/.test(value)) {
+			return parseInt(value);
+		}
+
+		this.DURATION_PARSE_REGEX ??= makeDurationParseRegex();
+		const match = String(value).trim().match(this.DURATION_PARSE_REGEX);
+
+		if (!match?.groups || !Object.values(match.groups).some((g) => !!g)) {
+			return null; // At least one group is required
+		}
+
+		let duration_in_seconds = 0;
+		for (const [key, multiplier] of Object.entries(DURATION_MULTIPLIERS)) {
+			duration_in_seconds += parseInt(match.groups?.[key] || 0) * multiplier;
+		}
+		return duration_in_seconds;
+	}
+
+	set_formatted_input(value) {
+		super.set_formatted_input(value);
+		this.set_duration_picker_value(value);
 	}
 
 	refresh_input() {
@@ -153,3 +193,34 @@ frappe.ui.form.ControlDuration = class ControlDuration extends frappe.ui.form.Co
 		return is_set;
 	}
 };
+
+const DURATION_MULTIPLIERS = {
+	weeks: 7 * 24 * 60 * 60,
+	days: 24 * 60 * 60,
+	hours: 60 * 60,
+	minutes: 60,
+	seconds: 1,
+};
+
+function makeDurationParseRegex() {
+	// Wrap in a function for translations to work
+	// Matches strings like: 1d 2h 3m 4s, with optional parts
+
+	const _part = (key, seps) => {
+		// Use named capture group for the key, then match the separator (h, m, s)
+		const rCapture = `(?<${key}>\\d+)`;
+		const rSep = "(?:" + seps.join("|") + ")";
+		return "\\s*(?:" + rCapture + "\\s*" + rSep + ")?\\s*";
+	};
+
+	return new RegExp(
+		[
+			_part("days", [__("d", null, "Days (Field: Duration)")]),
+			_part("hours", [__("h", null, "Hours (Field: Duration)")]),
+			_part("minutes", [__("m", null, "Minutes (Field: Duration)")]),
+			_part("seconds", [__("s", null, "Seconds (Field: Duration)")]),
+			".*", // Fallback to ignore unknown parts
+		].join(""),
+		"i"
+	);
+}

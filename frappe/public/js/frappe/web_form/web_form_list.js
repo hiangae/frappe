@@ -233,12 +233,9 @@ export default class WebFormList {
 		let empty_state = $(`
 			<div class="no-result text-muted flex justify-center align-center">
 				<div class="text-center">
-					<div>
-						<img
-							src="/assets/frappe/images/ui-states/list-empty-state.svg"
-							alt="Generic Empty State"
-							class="null-state">
-					</div>
+					<svg class="mb-4 icon icon-xl" style="stroke: var(--text-light);">
+						<use href="#icon-small-file"></use>
+					</svg>
 					<p class="small mb-2">${__("No {0} found", [__(this.doctype)])}</p>
 					${new_button}
 				</div>
@@ -282,7 +279,7 @@ export default class WebFormList {
 		const actions = $(".web-list-actions");
 
 		frappe.has_permission(this.doctype, "", "delete", () => {
-			this.add_button(actions, "delete-rows", "danger", true, "Delete", () =>
+			this.add_button(actions, "delete-rows", "danger", true, __("Delete"), () =>
 				this.delete_rows()
 			);
 		});
@@ -305,7 +302,9 @@ export default class WebFormList {
 	create_more() {
 		if (this.rows.length >= this.page_length) {
 			const footer = $(".web-list-footer");
-			this.add_button(footer, "more", "secondary", false, "Load More", () => this.more());
+			this.add_button(footer, "more", "secondary", false, __("Load More"), () =>
+				this.more()
+			);
 		}
 	}
 

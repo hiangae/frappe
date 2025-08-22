@@ -9,7 +9,7 @@ from frappe.automation.doctype.auto_repeat.auto_repeat import (
 	week_map,
 )
 from frappe.custom.doctype.custom_field.custom_field import create_custom_field
-from frappe.tests.utils import FrappeTestCase
+from frappe.tests import IntegrationTestCase
 from frappe.utils import add_days, add_months, getdate, today
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ def add_custom_fields() -> "CustomField":
 	)
 
 
-class TestAutoRepeat(FrappeTestCase):
+class TestAutoRepeat(IntegrationTestCase):
 	@classmethod
 	def setUpClass(cls):
 		cls.custom_field = add_custom_fields()
@@ -69,6 +69,32 @@ class TestAutoRepeat(FrappeTestCase):
 			frequency="Weekly",
 			reference_document=todo.name,
 			start_date=add_days(today(), -7),
+		)
+
+		self.assertEqual(doc.next_schedule_date, today())
+		data = get_auto_repeat_entries(getdate(today()))
+		create_repeated_entries(data)
+		frappe.db.commit()
+
+		todo = frappe.get_doc(doc.reference_doctype, doc.reference_document)
+		self.assertEqual(todo.auto_repeat, doc.name)
+
+		new_todo = frappe.db.get_value("ToDo", {"auto_repeat": doc.name, "name": ("!=", todo.name)}, "name")
+
+		new_todo = frappe.get_doc("ToDo", new_todo)
+
+		self.assertEqual(todo.get("description"), new_todo.get("description"))
+
+	def test_fortnightly_auto_repeat(self):
+		todo = frappe.get_doc(
+			doctype="ToDo", description="test fortnightly todo", assigned_by="Administrator"
+		).insert()
+
+		doc = make_auto_repeat(
+			reference_doctype="ToDo",
+			frequency="Fortnightly",
+			reference_document=todo.name,
+			start_date=add_days(today(), -14),
 		)
 
 		self.assertEqual(doc.next_schedule_date, today())
@@ -220,6 +246,68 @@ class TestAutoRepeat(FrappeTestCase):
 			doc.reference_doctype, filters={"auto_repeat": doc.name}, fields=["docstatus"], limit=1
 		)
 		self.assertEqual(docnames[0].docstatus, 1)
+
+	def test_auto_repeat_assignee(self):
+		todo = frappe.get_doc(
+			doctype="ToDo", description="test assignee todo", assigned_by="Administrator"
+		).insert()
+
+		doc = make_auto_repeat(reference_document=todo.name)
+		doc.update(
+			{
+				"assignee": [
+					{"user": "Administrator"},
+					{"user": "Guest"},
+				]
+			}
+		)
+		doc.save()
+		self.assertEqual(doc.next_schedule_date, today())
+		data = get_auto_repeat_entries(getdate(today()))
+		create_repeated_entries(data)
+		frappe.db.commit()
+
+		todo = frappe.get_doc(doc.reference_doctype, doc.reference_document)
+		self.assertEqual(todo.auto_repeat, doc.name)
+
+		new_todo = frappe.db.get_value("ToDo", {"auto_repeat": doc.name, "name": ("!=", todo.name)}, "name")
+
+		new_todo = frappe.get_doc("ToDo", new_todo)
+		self.assertEqual(todo.get("description"), new_todo.get("description"))
+		self.assertListEqual(
+			sorted(list(new_todo.get_assigned_users())),
+			sorted(["Administrator", "Guest"]),
+		)
+
+	def test_auto_repeat_assignee_with_separate_documents(self):
+		todo = frappe.get_doc(
+			doctype="ToDo",
+			description="test assignee todo with multiple doc",
+			assigned_by="Administrator",
+		).insert()
+
+		doc = make_auto_repeat(reference_document=todo.name)
+		doc.update(
+			{
+				"assignee": [
+					{"user": "Administrator"},
+					{"user": "Guest"},
+				],
+				"generate_separate_documents_for_each_assignee": 1,
+			}
+		)
+		doc.save()
+		self.assertEqual(doc.next_schedule_date, today())
+		data = get_auto_repeat_entries(getdate(today()))
+		create_repeated_entries(data)
+		frappe.db.commit()
+
+		todo = frappe.get_doc(doc.reference_doctype, doc.reference_document)
+		self.assertEqual(todo.auto_repeat, doc.name)
+
+		new_todo_count = frappe.db.count("ToDo", {"auto_repeat": doc.name, "name": ("!=", todo.name)}, "name")
+
+		self.assertEqual(new_todo_count, 2)
 
 
 def make_auto_repeat(**args):

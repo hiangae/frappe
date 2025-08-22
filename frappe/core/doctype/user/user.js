@@ -62,6 +62,7 @@ frappe.ui.form.on("User", {
 						let d = frm.add_child("block_modules");
 						d.module = v.module;
 					});
+					frm.module_editor.disable = 1;
 					frm.module_editor && frm.module_editor.show();
 				},
 			});
@@ -93,7 +94,11 @@ frappe.ui.form.on("User", {
 
 				if (frm.doc.user_type == "System User") {
 					var module_area = $("<div>").appendTo(frm.fields_dict.modules_html.wrapper);
-					frm.module_editor = new frappe.ModuleEditor(frm, module_area);
+					frm.module_editor = new frappe.ModuleEditor(
+						frm,
+						module_area,
+						frm.doc.module_profile ? 1 : 0
+					);
 				}
 			} else {
 				frm.roles_editor.show();
@@ -102,6 +107,11 @@ frappe.ui.form.on("User", {
 	},
 	refresh: function (frm) {
 		let doc = frm.doc;
+
+		frappe.xcall("frappe.apps.get_apps").then((r) => {
+			let apps = r?.map((r) => r.name) || [];
+			frm.set_df_property("default_app", "options", [" ", ...apps]);
+		});
 
 		if (frm.is_new()) {
 			frm.set_value("time_zone", frappe.sys_defaults.time_zone);
@@ -137,6 +147,15 @@ frappe.ui.form.on("User", {
 					__("View Permitted Documents"),
 					() =>
 						frappe.set_route("query-report", "Permitted Documents For User", {
+							user: frm.doc.name,
+						}),
+					__("Permissions")
+				);
+
+				frm.add_custom_button(
+					__("View Doctype Permissions"),
+					() =>
+						frappe.set_route("query-report", "User Doctype Permissions", {
 							user: frm.doc.name,
 						}),
 					__("Permissions")
@@ -234,6 +253,7 @@ frappe.ui.form.on("User", {
 				frm.roles_editor.show();
 			}
 
+			frm.module_editor.disable = frm.doc.module_profile ? 1 : 0;
 			frm.module_editor && frm.module_editor.show();
 
 			if (frappe.session.user == doc.name) {
@@ -254,6 +274,10 @@ frappe.ui.form.on("User", {
 			}
 			if (!found) {
 				frm.add_custom_button(__("Create User Email"), function () {
+					if (!frm.doc.email) {
+						frappe.msgprint(__("Email is mandatory to create User Email"));
+						return;
+					}
 					frm.events.create_user_email(frm);
 				});
 			}
@@ -318,7 +342,7 @@ frappe.ui.form.on("User", {
 			},
 			callback: function (r) {
 				if (r.message) {
-					frappe.msgprint(__("Save API Secret: {0}", [r.message.api_secret]));
+					show_api_key_dialog(r.message.api_key, r.message.api_secret);
 					frm.reload_doc();
 				}
 			},
@@ -352,7 +376,11 @@ frappe.ui.form.on("User", {
 		}
 	},
 	setup_impersonation: function (frm) {
-		if (frappe.session.user === "Administrator" && frm.doc.name != "Administrator") {
+		if (
+			frappe.session.user === "Administrator" &&
+			frm.doc.name != "Administrator" &&
+			!frm.is_new()
+		) {
 			frm.add_custom_button(__("Impersonate"), () => {
 				if (frm.doc.restrict_ip) {
 					frappe.msgprint({
@@ -413,5 +441,54 @@ function get_roles_for_editing_user() {
 			.get_meta("User")
 			.permissions.filter((perm) => perm.permlevel >= 1 && perm.write)
 			.map((perm) => perm.role) || ["System Manager"]
+	);
+}
+
+function show_api_key_dialog(api_key, api_secret) {
+	const dialog = new frappe.ui.Dialog({
+		title: __("API Keys"),
+		fields: [
+			{
+				label: __("API Key"),
+				fieldname: "api_key",
+				fieldtype: "Code",
+				read_only: 1,
+				default: api_key,
+			},
+			{
+				label: __("API Secret"),
+				fieldname: "api_secret",
+				fieldtype: "Code",
+				read_only: 1,
+				default: api_secret,
+			},
+		],
+		size: "small",
+		primary_action_label: __("Download"),
+		primary_action: () => {
+			frappe.tools.downloadify(
+				[
+					["api_key", "api_secret"],
+					[api_key, api_secret],
+				],
+				"System Manager",
+				"frappe_api_keys"
+			);
+
+			dialog.hide();
+		},
+		secondary_action_label: __("Copy token to clipboard"),
+		secondary_action: () => {
+			const token = `${api_key}:${api_secret}`;
+			frappe.utils.copy_to_clipboard(token);
+			dialog.hide();
+		},
+	});
+
+	dialog.show();
+	dialog.show_message(
+		__("Store the API secret securely. It won't be displayed again."),
+		"yellow",
+		1
 	);
 }
