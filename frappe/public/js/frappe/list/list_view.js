@@ -2058,8 +2058,11 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 			})
 			.then((actions) => {
 				Object.keys(this.workflow_action_items).forEach((key) => {
-					this.workflow_action_items[key].removeClass("disabled");
-					this.workflow_action_items[key].toggle(actions.includes(key));
+					const $link = this.workflow_action_items[key];
+					const $item = $link?.closest("li");
+					$link?.removeClass("disabled");
+					$link?.toggle(actions.includes(key));
+					$item?.toggle(actions.includes(key));
 				});
 			});
 	}
@@ -2412,7 +2415,10 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 							.join("\t");
 					});
 					const clipboard_data = [headers, ...rows].join("\n"); // Copy to clipboard
-					const message = __("Copied {0} rows to clipboard", [selected_items.length]);
+					const message = __("Copied {0} {1} to clipboard", [
+						selected_items.length,
+						selected_items.length === 1 ? __("row") : __("rows"),
+					]);
 					frappe.utils.copy_to_clipboard(clipboard_data, message);
 				},
 				standard: true,

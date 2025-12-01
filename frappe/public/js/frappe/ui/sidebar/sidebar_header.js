@@ -5,7 +5,14 @@ frappe.ui.SidebarHeader = class SidebarHeader {
 		this.drop_down_expanded = false;
 		this.workspace_title = this.sidebar.workspace_title;
 		const me = this;
+		this.fetch;
 		this.dropdown_items = [
+			{
+				name: "workspaces",
+				label: "Workspaces",
+				icon: "wallpaper",
+				items: this.fetch_sibling_workspaces(),
+			},
 			{
 				name: "desktop",
 				label: __("Desktop"),
@@ -37,7 +44,21 @@ frappe.ui.SidebarHeader = class SidebarHeader {
 		this.populate_dropdown_menu();
 		this.setup_select_options();
 	}
-
+	fetch_sibling_workspaces() {
+		let sibling_workspaces = [];
+		let workspaces = frappe.current_app.workspaces;
+		workspaces.splice(workspaces.indexOf(this.workspace_title), 1);
+		workspaces.forEach((w) => {
+			let item = {
+				name: w.toLowerCase(),
+				label: w,
+				icon: "wallpaper",
+				url: frappe.utils.generate_route({ type: "Workspace", route: w.toLowerCase() }),
+			};
+			sibling_workspaces.push(item);
+		});
+		return sibling_workspaces;
+	}
 	make() {
 		$(".sidebar-header").remove();
 		$(".sidebar-header-menu").remove();
@@ -89,16 +110,13 @@ frappe.ui.SidebarHeader = class SidebarHeader {
 	}
 
 	setup_app_switcher() {
-		this.dropdown_menu = $(".sidebar-header-menu");
-		$(".sidebar-header").on("click", (e) => {
-			this.toggle_dropdown_menu();
-			e.stopImmediatePropagation();
+		frappe.ui.create_menu({
+			parent: this.wrapper,
+			menu_items: this.dropdown_items,
+			onShow: this.toggle_active,
+			onHide: this.toggle_active,
+			onItemClick: this.toggle_active,
 		});
-	}
-
-	toggle_dropdown_menu() {
-		this.toggle_active();
-		this.dropdown_menu.toggleClass("hidden");
 	}
 
 	populate_dropdown_menu() {
@@ -143,19 +161,10 @@ frappe.ui.SidebarHeader = class SidebarHeader {
 		});
 	}
 
-	toggle_active() {
-		this.toggle_dropdown();
-		this.wrapper.toggleClass("active-sidebar");
-		if (!this.sidebar.sidebar_expanded) {
-			this.wrapper.removeClass("active-sidebar");
-		}
-	}
-
-	toggle_dropdown() {
-		if (this.drop_down_expanded) {
-			this.drop_down_expanded = false;
-		} else {
-			this.drop_down_expanded = true;
+	toggle_active(wrapper) {
+		$(wrapper).toggleClass("active-sidebar");
+		if (!frappe.app.sidebar.sidebar_expanded) {
+			$(wrapper).removeClass("active-sidebar");
 		}
 	}
 
