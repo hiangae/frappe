@@ -20,17 +20,24 @@
 				</div>
 
 				<div class="flex config-area">
-					<label v-if="allow_toggle_optimize" class="frappe-checkbox"
+					<label
+						v-if="allow_toggle_optimize"
+						class="frappe-checkbox"
+						id="uploader-optimize-checkbox"
 						><input
 							type="checkbox"
 							:checked="optimize"
 							@change="emit('toggle_optimize')"
 						/>{{ __("Optimize") }}</label
 					>
-					<label v-if="allow_toggle_private" class="frappe-checkbox"
+					<label
+						v-if="show_private_checkbox"
+						class="frappe-checkbox"
+						id="uploader-private-checkbox"
 						><input
 							type="checkbox"
 							:checked="file.private"
+							:disabled="!allow_toggle_private"
 							@change="emit('toggle_private')"
 						/>{{ __("Private") }}</label
 					>
@@ -53,12 +60,14 @@
 						class="btn btn-crop muted"
 						@click="emit('toggle_image_cropper')"
 						v-html="frappe.utils.icon('crop', 'md')"
+						:title="__('Crop')"
 					></button>
 					<button
 						v-if="!uploaded && !file.uploading && !file.failed"
 						class="btn muted"
 						@click="emit('remove')"
-						v-html="frappe.utils.icon('delete', 'md')"
+						v-html="frappe.utils.icon('x', 'md')"
+						:title="__('Remove')"
 					></button>
 				</div>
 			</div>
@@ -95,6 +104,9 @@ const props = defineProps({
 	allow_toggle_private: {
 		default: true,
 	},
+	show_private_checkbox: {
+		default: true,
+	},
 	allow_toggle_optimize: {
 		default: true,
 	},
@@ -127,9 +139,11 @@ let allow_toggle_optimize = computed(() => {
 		!props.file.failed
 	);
 });
-let allow_toggle_private = computed(() => {
-	return props.allow_toggle_private && !uploaded.value && !props.file.failed;
+
+let show_private_checkbox = computed(() => {
+	return !uploaded.value && !props.file.failed;
 });
+
 let is_cropable = computed(() => {
 	let croppable_types = ["image/jpeg", "image/png"];
 	return (

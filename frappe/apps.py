@@ -10,12 +10,14 @@ from frappe.core.doctype.installed_applications.installed_applications import (
 	get_setup_wizard_completed_apps,
 	get_setup_wizard_not_required_apps,
 )
+from frappe.utils.caching import request_cache
 
-# check if route is /app or /app/* and not /app1 or /app1/*
-DESK_APP_PATTERN = re.compile(r"^/app(/.*)?$")
+# check if route is /desk or /desk/* and not /app1 or /app1/*
+DESK_APP_PATTERN = re.compile(r"^/desk(/.*)?$")
 
 
 @frappe.whitelist()
+@request_cache
 def get_apps():
 	apps = frappe.get_installed_apps()
 	app_list = []
@@ -51,6 +53,8 @@ def get_apps():
 
 
 def get_route(app_name):
+	if app_name not in frappe.get_installed_apps():
+		return "/apps"  # Invalid defaults
 	apps = frappe.get_hooks("add_to_apps_screen", app_name=app_name)
 	app = next((app for app in apps if app.get("name") == app_name), None)
 	return app.get("route") if app and app.get("route") else "/apps"
@@ -86,7 +90,10 @@ def get_default_path():
 
 
 @frappe.whitelist()
-def set_app_as_default(app_name):
+def set_app_as_default(app_name: str):
+	if app_name not in frappe.get_installed_apps():
+		frappe.throw(_("App {} is not installed").format(frappe.bold(app_name)))
+
 	if frappe.db.get_value("User", frappe.session.user, "default_app") == app_name:
 		frappe.db.set_value("User", frappe.session.user, "default_app", "")
 	else:
@@ -94,7 +101,7 @@ def set_app_as_default(app_name):
 
 
 @frappe.whitelist()
-def get_incomplete_setup_route(current_app, app_route):
+def get_incomplete_setup_route(current_app: str, app_route: str):
 	pending_apps = get_apps_with_incomplete_dependencies(current_app)
 
 	if not pending_apps:

@@ -65,7 +65,7 @@ frappe.views.FileView = class FileView extends frappe.views.ListView {
 		frappe.breadcrumbs.add({
 			type: "Custom",
 			label: __("Home"),
-			route: "/app/List/File/Home",
+			route: "/desk/List/File/Home",
 		});
 	}
 
@@ -79,6 +79,12 @@ frappe.views.FileView = class FileView extends frappe.views.ListView {
 			this.order_by = this.view_user_settings.order_by || "file_name asc";
 
 			this.menu_items = this.menu_items.concat(this.file_menu_items());
+		});
+	}
+
+	make_new_doc() {
+		new frappe.ui.FileUploader({
+			folder: this.current_folder,
 		});
 	}
 
@@ -202,6 +208,9 @@ frappe.views.FileView = class FileView extends frappe.views.ListView {
 		} else if (frappe.utils.is_image_file(d.file_name)) {
 			icon_class = "image";
 			type = "image";
+		} else if (frappe.utils.is_video_file(d.file_name)) {
+			icon_class = "file-play";
+			type = "video";
 		} else {
 			icon_class = "file";
 			type = "file";
@@ -252,8 +261,6 @@ frappe.views.FileView = class FileView extends frappe.views.ListView {
 			this.render_grid_view();
 		} else {
 			super.render();
-			this.render_header();
-			this.render_count();
 		}
 	}
 
@@ -351,7 +358,7 @@ frappe.views.FileView = class FileView extends frappe.views.ListView {
 						acc += "/" + curr;
 					}
 					return acc;
-				}, "/app/file/view");
+				}, "/desk/file/view");
 
 				return `<a href="${route}">${title}</a>`;
 			})
@@ -391,7 +398,7 @@ frappe.views.FileView = class FileView extends frappe.views.ListView {
 	}
 
 	get_route_url(file) {
-		return file.is_folder ? "/app/List/File/" + file.name : this.get_form_link(file);
+		return file.is_folder ? "/desk/List/File/" + file.name : this.get_form_link(file);
 	}
 
 	get_creation_date(file) {

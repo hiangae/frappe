@@ -5,83 +5,14 @@ import json
 
 import frappe
 from frappe import _
-from frappe.model.document import Document, get_controller
-from frappe.utils import cint, quoted
+from frappe.model.document import get_controller
+from frappe.utils import cint
 from frappe.website.path_resolver import resolve_path
 
 no_cache = 1
 
 
-def get_context(context, **dict_params):
-	"""Return context for a list standard list page.
-
-	Also update `get_list_context` from the doctype module file."""
-	frappe.local.form_dict.update(dict_params)
-	doctype = frappe.local.form_dict.doctype
-	context.parents = [{"route": "me", "title": _("My Account")}]
-	context.meta = frappe.get_meta(doctype)
-	context.update(get_list_context(context, doctype) or {})
-	context.doctype = doctype
-	context.txt = frappe.local.form_dict.txt
-	context.update(get(**frappe.local.form_dict))
-
-
-@frappe.whitelist(allow_guest=True)
-def get(
-	doctype: str,
-	txt: str | None = None,
-	limit_start: int = 0,
-	limit: int = 20,
-	pathname: str | None = None,
-	**kwargs,
-):
-	"""Return processed HTML page for a standard listing."""
-	limit_start = cint(limit_start)
-	raw_result = get_list_data(doctype, txt, limit_start, limit=limit + 1, **kwargs)
-	show_more = len(raw_result) > limit
-	if show_more:
-		raw_result = raw_result[:-1]
-
-	meta = frappe.get_meta(doctype)
-	list_context = frappe.flags.list_context
-
-	if not raw_result:
-		return {"result": []}
-
-	if txt:
-		list_context.default_subtitle = _('Filtered by "{0}"').format(txt)
-
-	result = []
-	row_template = list_context.row_template or "templates/includes/list/row_template.html"
-	list_view_fields = [df for df in meta.fields if df.in_list_view][:4]
-
-	for doc in raw_result:
-		doc.doctype = doctype
-		new_context = frappe._dict(doc=doc, meta=meta, list_view_fields=list_view_fields)
-
-		if not list_context.get_list and not isinstance(new_context.doc, Document):
-			new_context.doc = frappe.get_doc(doc.doctype, doc.name)
-			new_context.update(new_context.doc.as_dict())
-
-		if not frappe.in_test:
-			pathname = pathname or frappe.local.request.path
-			new_context["pathname"] = pathname.strip("/ ")
-		new_context.update(list_context)
-		set_route(new_context)
-		rendered_row = frappe.render_template(row_template, new_context, is_path=True)
-		result.append(rendered_row)
-
-	from frappe.utils.response import json_handler
-
-	return {
-		"raw_result": json.dumps(raw_result, default=json_handler),
-		"result": result,
-		"show_more": show_more,
-		"next_start": limit_start + limit,
-	}
-
-
-@frappe.whitelist(allow_guest=True)
+@frappe.whitelist()
 def get_list_data(
 	doctype: str,
 	txt: str | None = None,
@@ -114,6 +45,11 @@ def get_list_data(
 	if list_context.filters:
 		filters.update(list_context.filters)
 
+	if web_form_name:
+		dynamic_filters = get_dynamic_filters(web_form_name)
+		if dynamic_filters:
+			filters.update(dynamic_filters)
+
 	_get_list = list_context.get_list or get_list
 
 	kwargs = dict(
@@ -135,16 +71,6 @@ def get_list_data(
 	frappe.flags.list_context = list_context
 
 	return raw_result
-
-
-def set_route(context):
-	"""Set link for the list item"""
-	if context.web_form_name:
-		context.route = f"{context.pathname}?name={quoted(context.doc.name)}"
-	elif context.doc and getattr(context.doc, "route", None):
-		context.route = context.doc.route
-	else:
-		context.route = f"{context.pathname or quoted(context.doc.doctype)}/{quoted(context.doc.name)}"
 
 
 def prepare_filters(doctype, controller, kwargs):
@@ -219,7 +145,7 @@ def get_list_context(context, doctype, web_form_name=None):
 		list_context.row_template = meta.get_row_template()
 
 	if not meta.custom and not list_context.list_template:
-		list_context.template = meta.get_list_template() or "www/list.html"
+		list_context.template = meta.get_list_template()
 
 	return list_context
 
@@ -252,7 +178,9 @@ def get_list(
 			or_filters.extend(
 				[doctype, f, "like", "%" + txt + "%"]
 				for f in meta.get_search_fields()
-				if f == "name" or meta.get_field(f).fieldtype in ("Data", "Text", "Small Text", "Text Editor")
+				if f == "name"
+				or meta.get_field(f).fieldtype
+				in ("Autocomplete", "Data", "Text", "Small Text", "Text Editor")
 			)
 		else:
 			if isinstance(filters, dict):
@@ -271,3 +199,37 @@ def get_list(
 		order_by=order_by,
 		distinct=distinct,
 	)
+
+
+def get_dynamic_filters(web_form_name):
+	"""Evaluate dynamic filter expressions from Web Form.
+	Uses same safe_eval + get_workflow_safe_globals pattern as Workflow."""
+	from frappe.model.workflow import get_workflow_safe_globals
+
+	web_form = frappe.get_cached_doc("Web Form", web_form_name)
+
+	if not web_form.dynamic_filters_json:
+		return None
+
+	dynamic_filters = json.loads(web_form.dynamic_filters_json)
+	if not dynamic_filters:
+		return None
+
+	safe_globals = get_workflow_safe_globals()
+	safe_globals["frappe"]["defaults"] = frappe._dict(
+		get_user_default=frappe.defaults.get_user_default,
+		get_global_default=frappe.defaults.get_global_default,
+	)
+
+	evaluated = {}
+	for f in dynamic_filters:
+		try:
+			value = frappe.safe_eval(f[3], safe_globals)
+			evaluated[f[1]] = [f[2], value]
+		except Exception as e:
+			frappe.throw(
+				_("Invalid expression in Web Form Dynamic Filter for {0}: {1}").format(f[1], e),
+				title=_("Dynamic Filter Error"),
+			)
+
+	return evaluated

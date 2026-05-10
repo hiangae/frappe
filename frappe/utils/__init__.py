@@ -18,7 +18,7 @@ from collections.abc import (
 	Sequence,
 )
 from email.header import decode_header, make_header
-from email.utils import formataddr, parseaddr
+from email.utils import formataddr, getaddresses, parseaddr
 from typing import Any, Generic, TypeAlias, TypedDict
 
 import orjson
@@ -47,15 +47,6 @@ EMAIL_MATCH_PATTERN = re.compile(
 UNSET = object()
 
 PropertyType: TypeAlias = property | functools.cached_property
-
-
-if sys.version_info < (3, 11):
-
-	def exception():
-		_exc_type, exc_value, _exc_traceback = sys.exc_info()
-		return exc_value
-
-	sys.exception = exception
 
 
 def get_fullname(user=None):
@@ -180,45 +171,42 @@ def validate_name(name, throw=False):
 
 def validate_email_address(email_str, throw=False):
 	"""Validates the email string"""
-	email = email_str = (email_str or "").strip()
 
-	def _check(e):
-		_valid = True
-		if not e:
-			_valid = False
+	email_str = (email_str or "").strip()
+	out = []
 
-		if "undisclosed-recipient" in e:
-			return False
+	# Replace newlines with commas so getaddresses can handle them
+	# getaddresses expects comma-separated values
+	email_str = email_str.replace("\n", ",").replace("\r", ",")
 
-		elif " " in e and "<" not in e:
-			# example: "test@example.com test2@example.com" will return "test@example.comtest2" after parseaddr!!!
-			_valid = False
+	# Parse using stdlib (handles commas in display names correctly)
+	addresses = getaddresses([email_str])
 
-		else:
-			email_id = extract_email_id(e)
-			match = EMAIL_MATCH_PATTERN.match(email_id) if email_id else None
-
-			if not match:
-				_valid = False
-
-		if not _valid:
+	for name, addr in addresses:
+		if not addr:
 			if throw:
-				invalid_email = frappe.utils.escape_html(e)
 				frappe.throw(
-					frappe._("{0} is not a valid Email Address").format(invalid_email),
+					frappe._("{0} is not a valid Email Address").format(
+						frappe.utils.escape_html(name or email_str)
+					),
 					frappe.InvalidEmailAddressError,
 				)
-			return None
-		else:
-			return email_id
-
-	out = []
-	for e in email_str.split(","):
-		if not e:
 			continue
-		email = _check(e.strip())
-		if email:
-			out.append(email)
+
+		# Skip undisclosed recipients
+		if "undisclosed-recipient" in addr:
+			continue
+
+		match = EMAIL_MATCH_PATTERN.match(addr)
+		if not match:
+			if throw:
+				frappe.throw(
+					frappe._("{0} is not a valid Email Address").format(frappe.utils.escape_html(addr)),
+					frappe.InvalidEmailAddressError,
+				)
+			continue
+
+		out.append(addr)
 
 	return ", ".join(out)
 
@@ -303,10 +291,11 @@ def is_valid_iban(iban: str) -> bool:
 
 def random_string(length: int) -> str:
 	"""generate a random string"""
+	import secrets
 	import string
-	from random import choice
 
-	return "".join(choice(string.ascii_letters + string.digits) for i in range(length))
+	alphabet = string.ascii_letters + string.digits
+	return "".join(secrets.choice(alphabet) for i in range(length))
 
 
 def has_gravatar(email: str) -> str:
@@ -587,7 +576,7 @@ def get_site_url(site):
 
 def encode_dict(d, encoding="utf-8"):
 	for key in d:
-		if isinstance(d[key], str) and isinstance(d[key], str):
+		if isinstance(d[key], str):
 			d[key] = d[key].encode(encoding)
 
 	return d
@@ -916,19 +905,18 @@ def call(fn, *args, **kwargs):
 
 def get_safe_filters(filters):
 	try:
-		filters = orjson.loads(filters)
-
-		if isinstance(filters, int | float):
-			filters = frappe.as_unicode(filters)
-
+		parsed = orjson.loads(filters)
 	except (TypeError, ValueError):
-		# filters are not passed, not json
-		pass
+		# not a string, or not valid json
+		return filters
+	# numeric JSON is ambiguous: docnames like "3E002" parse as floats and
+	# would be corrupted by stringifying back, so keep the original string
+	if isinstance(parsed, int | float) and not isinstance(parsed, bool):
+		return filters
+	return parsed
 
-	return filters
 
-
-def create_batch(iterable: Iterable, size: int) -> Generator[Iterable, None, None]:
+def create_batch(iterable: Iterable, size: int) -> Generator[Iterable]:
 	"""Convert an iterable to multiple batches of constant size of batch_size.
 
 	Args:
@@ -1201,44 +1189,14 @@ def create_folder(path, with_init=False):
 
 
 cached_property = functools.cached_property
-if sys.version_info.minor < 12:
-	T = TypeVar("T")
 
-	class cached_property(functools.cached_property, Generic[T]):
-		"""
-		A simpler `functools.cached_property` implementation without locks.
-		This isn't needed in Python 3.12+, since lock was removed in newer versions.
-		Hence, in those versions, it returns the `functools.cached_property` object.
 
-		This does not prevent a possible race condition in multi-threaded usage.
-		The getter function could run more than once on the same instance,
-		with the latest run setting the cached value. If the cached property is
-		idempotent or otherwise not harmful to run more than once on an instance,
-		this is fine. If synchronization is needed, implement the necessary locking
-		inside the decorated getter function or around the cached property access.
-		"""
+def get_frappe_version() -> str:
+	return getattr(frappe, "__version__", "unknown")
 
-		def __init__(self, func: Callable[[Any], T]):
-			self.func = func
-			self.attrname = None
-			self.__doc__ = func.__doc__
-			self.__module__ = func.__module__
 
-		def __set_name__(self, owner, name):
-			if self.attrname is None:
-				self.attrname = name
-
-			elif name != self.attrname:
-				raise TypeError(
-					"Cannot assign the same cached_property to two different names "
-					f"({self.attrname!r} and {name!r})."
-				)
-
-		def __get__(self, instance, owner=None) -> T:
-			if instance is None:
-				return self
-
-			value = self.func(instance)
-			instance.__dict__[self.attrname] = value
-			return value
-# end: custom cached_property implementation
+def get_app_version(app_name: str) -> str:
+	try:
+		return frappe.get_attr(app_name + ".__version__")
+	except Exception:
+		return "0.0.1"

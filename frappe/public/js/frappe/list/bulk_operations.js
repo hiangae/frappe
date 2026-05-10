@@ -341,8 +341,22 @@ export default class BulkOperations {
 				},
 			],
 			primary_action: ({ value }) => {
-				const fieldname = field_mappings[dialog.get_value("field")].fieldname;
+				const selected_field = field_mappings[dialog.get_value("field")];
+				const { fieldname, is_child_field, child_doctype } = selected_field;
 				dialog.disable_primary_action();
+				let update_data = {};
+				if (is_child_field) {
+					// For child table fields, we need to update all rows in the child table
+					update_data = {
+						child_table_updates: {
+							[child_doctype]: {
+								[fieldname]: value || null,
+							},
+						},
+					};
+				} else {
+					update_data[fieldname] = value || null;
+				}
 				frappe
 					.call({
 						method: "frappe.desk.doctype.bulk_update.bulk_update.submit_cancel_or_update_docs",
@@ -351,9 +365,7 @@ export default class BulkOperations {
 							freeze: true,
 							docnames: docnames,
 							action: "update",
-							data: {
-								[fieldname]: value || null,
-							},
+							data: update_data,
 						},
 					})
 					.then((r) => {
@@ -379,12 +391,14 @@ export default class BulkOperations {
 		show_help_text();
 
 		function set_value_field(dialogObj) {
-			const new_df = Object.assign({}, field_mappings[dialogObj.get_value("field")]);
+			const field_value = dialogObj.get_value("field");
+			if (!field_value || !field_mappings[field_value]) return;
+			const new_df = Object.assign({}, field_mappings[field_value]);
 			/* if the field label has status in it and
 			if it has select fieldtype with no default value then
 			set a default value from the available option. */
 			if (
-				new_df.label.match(status_regex) &&
+				new_df.label?.match(status_regex) &&
 				new_df.fieldtype === "Select" &&
 				!new_df.default
 			) {
@@ -399,11 +413,15 @@ export default class BulkOperations {
 			new_df.onchange = show_help_text;
 
 			delete new_df.depends_on;
+			delete new_df.is_child_field;
+			delete new_df.child_doctype;
 			dialogObj.replace_field("value", new_df);
 			show_help_text();
 		}
 
 		function show_help_text() {
+			if (dialog.get_primary_btn().is(":focus, :active")) return;
+
 			let value = dialog.get_value("value");
 			if (value == null || value === "") {
 				dialog.set_df_property(
@@ -438,9 +456,7 @@ export default class BulkOperations {
 			primary_action: () => {
 				let args = dialog.get_values();
 				if (args && args.tags) {
-					dialog.set_message("Adding Tags...");
-
-					frappe.call({
+					return frappe.call({
 						method: "frappe.desk.doctype.tag.tag.add_tags",
 						args: {
 							tags: args.tags,
@@ -462,7 +478,9 @@ export default class BulkOperations {
 		frappe.require("data_import_tools.bundle.js", () => {
 			const data_exporter = new frappe.data_import.DataExporter(
 				doctype,
-				"Insert New Records"
+				"Insert New Records",
+				"CSV",
+				true
 			);
 			data_exporter.dialog.set_value("export_records", "by_filter");
 			data_exporter.filter_group.add_filters_to_filter_group([
@@ -471,3 +489,5 @@ export default class BulkOperations {
 		});
 	}
 }
+
+frappe.ui.BulkOperations = BulkOperations;
