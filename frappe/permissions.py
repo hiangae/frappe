@@ -6,6 +6,7 @@ import functools
 import frappe
 import frappe.share
 from frappe import _, msgprint
+from frappe.app_state import is_module_disabled
 from frappe.core.doctype.permission_type.permission_type import get_doctype_ptype_map
 from frappe.query_builder import DocType
 from frappe.utils import cint, cstr
@@ -129,6 +130,10 @@ def has_permission(
 		)
 
 	meta = frappe.get_meta(doctype)
+
+	if is_module_disabled(meta.module):
+		debug and _debug_log(f"Not allowed because {meta.module} belongs to a disabled app")
+		return False
 
 	# docname == doctype for single doctypes
 	if not doc and meta.issingle:
@@ -616,11 +621,13 @@ def add_user_permission(
 		).insert(ignore_permissions=ignore_permissions)
 
 
-def remove_user_permission(doctype, name, user):
+def remove_user_permission(doctype, name, user, ignore_permissions=False):
 	user_permission_name = frappe.db.get_value(
 		"User Permission", dict(user=user, allow=doctype, for_value=name)
 	)
-	frappe.delete_doc("User Permission", user_permission_name, force=True)
+	frappe.delete_doc(
+		"User Permission", user_permission_name, force=True, ignore_permissions=ignore_permissions
+	)
 
 
 def clear_user_permissions_for_doctype(doctype, user=None):
@@ -882,10 +889,16 @@ def has_child_permission(
 			)
 			return False
 
+		parent_doc = child_doc.parent_doc if hasattr(child_doc, "parent_doc") else None
+		if parent_doc is None:
+			parent_doc = child_doc.parent
+	else:
+		parent_doc = None
+
 	return has_permission(
 		parent_doctype,
 		ptype=ptype,
-		doc=child_doc and getattr(child_doc, "parent_doc", child_doc.parent),
+		doc=parent_doc,
 		user=user,
 		print_logs=print_logs,
 		debug=debug,

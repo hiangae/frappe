@@ -35,7 +35,7 @@ from frappe.utils.caching import deprecated_local_cache as local_cache
 from frappe.utils.caching import request_cache, site_cache
 from frappe.utils.data import as_unicode, bold, cint, cstr, safe_decode, safe_encode, sbool, scrub, unscrub
 from frappe.utils.local import Local, LocalProxy, release_local
-from frappe.utils.translations import _, _lt, set_user_lang
+from frappe.utils.translations import N_, _, _lt, set_user_lang
 
 # Local application imports
 from .exceptions import *
@@ -123,6 +123,8 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
 	# frappe.apps
 	"get_all_apps": ("frappe.apps", "get_all_apps"),
 	"get_installed_apps": ("frappe.apps", "get_installed_apps"),
+	"get_disabled_apps": ("frappe.apps", "get_disabled_apps"),
+	"get_active_apps": ("frappe.apps", "get_active_apps"),
 	# frappe.utils.response
 	"respond_as_web_page": ("frappe.utils.response", "respond_as_web_page"),
 	"redirect_to_message": ("frappe.utils.response", "redirect_to_message"),
@@ -148,7 +150,7 @@ if TYPE_CHECKING:  # pragma: no cover
 	from werkzeug.wrappers import Request
 
 	# Lazy-imported names — resolved at runtime via __getattr__; listed here for editors/type checkers
-	from frappe.apps import get_all_apps, get_installed_apps
+	from frappe.apps import get_active_apps, get_all_apps, get_disabled_apps, get_installed_apps
 	from frappe.cache_manager import clear_cache, reset_metadata_version
 	from frappe.concurrency_limiter import concurrent_limit
 	from frappe.config import get_common_site_config, get_conf, get_site_config
@@ -279,9 +281,23 @@ if TYPE_CHECKING:  # pragma: no cover
 	lang: str
 
 
-def init(site: str, sites_path: str = ".", new_site: bool = False, force: bool = False) -> None:
+def init(
+	site: str,
+	sites_path: str = ".",
+	new_site: bool = False,
+	force: bool = False,
+	*,
+	is_request=False,
+	is_job=False,
+) -> None:
 	"""Initialize frappe for the current site. Reset thread locals `frappe.local`"""
-	if getattr(local, "initialised", None) and not force:
+	# Reset locals at start of the request.
+	# Previous request can fail in ways we might have no control over.
+	# release_local is inexpensive, so trigger it before every request/job.
+	if force:
+		release_local(local)
+
+	if getattr(local, "initialised", None):
 		return
 
 	if site and not SITE_NAME_PATTERN.match(site):
@@ -323,7 +339,7 @@ def init(site: str, sites_path: str = ".", new_site: bool = False, force: bool =
 
 	from frappe.config import get_site_config
 
-	local.conf = get_site_config(sites_path=sites_path, site_path=site_path, cached=bool(frappe.request))
+	local.conf = get_site_config(sites_path=sites_path, site_path=site_path, cached=is_request)
 	local.lang = local.conf.lang or "en"
 
 	local.module_app = None
@@ -348,7 +364,7 @@ def init(site: str, sites_path: str = ".", new_site: bool = False, force: bool =
 	if not cache or not client_cache:
 		setup_redis_cache_connection()
 
-	setup_module_map(include_all_apps=not (frappe.request or frappe.job or frappe.flags.in_migrate))
+	setup_module_map(include_all_apps=not (is_request or is_job or frappe.flags.in_migrate))
 
 	local.initialised = True
 
@@ -455,10 +471,11 @@ class init_site:
 
 def destroy():
 	"""Closes connection and releases werkzeug local."""
-	if db:
-		db.close()
-
-	release_local(local)
+	try:
+		if db:
+			db.close()
+	finally:
+		release_local(local)
 
 
 _redis_init_lock = threading.Lock()
@@ -548,7 +565,7 @@ def get_request_header(key, default=None):
 whitelisted: set[Callable] = set()
 guest_methods: set[Callable] = set()
 xss_safe_methods: set[Callable] = set()
-allowed_http_methods_for_whitelisted_func: dict[Callable, list[str]] = {}
+allowed_http_methods_for_whitelisted_func: dict[Callable, tuple[str, ...]] = {}
 
 
 def _in_request_or_test():
@@ -579,7 +596,14 @@ def whitelist(allow_guest=False, xss_safe=False, methods=None, force_types=None)
 	"""
 
 	if not methods:
-		methods = ["GET", "POST", "PUT", "DELETE"]
+		methods = ("GET", "POST", "PUT", "DELETE", "QUERY")
+	elif isinstance(methods, str):
+		methods = (methods,)
+	else:
+		methods = tuple(methods)
+
+	if "GET" in methods and "QUERY" not in methods:
+		methods = (*methods, "QUERY")
 
 	def innerfn(fn):
 		from frappe.utils.typing_validations import validate_argument_types
@@ -606,8 +630,17 @@ def whitelist(allow_guest=False, xss_safe=False, methods=None, force_types=None)
 def is_whitelisted(method):
 	from frappe.utils import sanitize_html
 
+	app_name = (method.__module__ or "").split(".", 1)[0]
+	from frappe.apps import get_disabled_apps
+
+	if app_name in get_disabled_apps():
+		throw(_("App {0} is disabled on this site").format(app_name), AppDisabledError)
+
 	is_guest = session["user"] == "Guest"
 	if method not in whitelisted or (is_guest and method not in guest_methods):
+		if method in whitelisted and is_guest and response.get("session_expired"):
+			raise SessionExpired
+
 		summary = _("You are not permitted to access this resource. Login to access")
 		detail = _("Function {0} is not whitelisted.").format(bold(f"{method.__module__}.{method.__name__}"))
 		msg = f"<details><summary>{summary}</summary>{detail}</details>"
@@ -648,6 +681,7 @@ def read_only():
 def write_only():
 	# if replica connection exists, we have to replace it momentarily with the primary connection
 	def innfn(fn):
+		@functools.wraps(fn)
 		def wrapper_fn(*args, **kwargs):
 			primary_db = getattr(local, "primary_db", None)
 			replica_db = getattr(local, "replica_db", None)
@@ -982,11 +1016,11 @@ def get_doc_hooks():
 def _load_app_hooks(app_name: str | None = None):
 	import types
 
-	from frappe.apps import get_installed_apps
+	from frappe.apps import get_active_apps
 	from frappe.utils import get_module
 
 	hooks = {}
-	apps = [app_name] if app_name else get_installed_apps(_ensure_on_bench=True)
+	apps = [app_name] if app_name else get_active_apps(_ensure_on_bench=True)
 
 	for app in apps:
 		try:
@@ -1422,10 +1456,14 @@ def is_setup_complete():
 	if not frappe.db.table_exists("Installed Application"):
 		return setup_complete
 
+	from frappe.apps import get_disabled_apps
+
+	disabled_apps = get_disabled_apps()
+	wizard_apps = [app for app in ["frappe", "erpnext"] if app not in disabled_apps]
 	if all(
 		frappe.get_all(
 			"Installed Application",
-			{"app_name": ("in", ["frappe", "erpnext"])},
+			{"app_name": ("in", wizard_apps)},
 			pluck="is_setup_complete",
 		)
 	):
@@ -1440,21 +1478,9 @@ def ping():
 
 
 def validate_and_sanitize_search_inputs(fn):
-	@functools.wraps(fn)
-	def wrapper(*args, **kwargs):
-		from frappe.desk.search import sanitize_searchfield
+	from frappe.desk.search import validate_and_sanitize_search_inputs as get_wrapper
 
-		kwargs.update(dict(zip(fn.__code__.co_varnames, args, strict=False)))
-		sanitize_searchfield(kwargs["searchfield"])
-		kwargs["start"] = cint(kwargs["start"])
-		kwargs["page_len"] = cint(kwargs["page_len"])
-
-		if kwargs["doctype"] and not db.exists("DocType", kwargs["doctype"]):
-			return []
-
-		return fn(**kwargs)
-
-	return wrapper
+	return get_wrapper(fn)
 
 
 def override_whitelisted_method(original_method: str) -> str:

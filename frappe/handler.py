@@ -74,6 +74,8 @@ def execute_cmd(cmd, from_async=False):
 
 	try:
 		method = get_attr(cmd)
+	except frappe.AppNotInstalledError:
+		raise
 	except Exception as e:
 		frappe.throw(_("Failed to get method for command {0} with {1}").format(cmd, str(e)))
 
@@ -221,7 +223,7 @@ def upload_file():
 		is_whitelisted(method)
 		return method()
 	else:
-		return frappe.get_doc(
+		doc = frappe.get_doc(
 			{
 				"doctype": "File",
 				"attached_to_doctype": doctype,
@@ -233,7 +235,11 @@ def upload_file():
 				"is_private": cint(is_private),
 				"content": content,
 			}
-		).save(ignore_permissions=ignore_permissions)
+		)
+		funcs = frappe.get_hooks("after_file_upload")
+		for func in funcs:
+			doc = frappe.call(func, doc=doc)
+		return doc.save(ignore_permissions=ignore_permissions)
 
 
 def check_write_permission(doctype: str | None = None, name: str | None = None):
