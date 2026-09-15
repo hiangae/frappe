@@ -88,6 +88,79 @@ context("Print Format Builder — create flow", () => {
 		cy.get(".print-format-main", { timeout: 20000 }).should("exist");
 	});
 
+	// 2b. The New dialog: "HTML" creates a custom format and opens the form
+	it("creates an HTML format from the dialog and opens the form", () => {
+		cy.visit("/app/print-format");
+		cy.get(".page-head .primary-action", { timeout: 30000 }).should("be.visible").click();
+		cy.get_open_dialog().should("contain", "New Print Format");
+
+		// scope fills to the dialog — the list page has its own hidden doc_type field
+		cy.get_open_dialog().within(() => {
+			cy.fill_field("doc_type", "ToDo", "Link");
+			cy.fill_field("print_format_name", PF_NAME, "Data");
+			cy.fill_field("start_with", "HTML", "Select");
+			cy.findByRole("button", { name: "Create" }).click();
+		});
+
+		// the form route carries the created doc's real name — read it back instead
+		// of trusting the typed string (cy.type can drop characters)
+		cy.location("pathname", { timeout: 20000 }).should(
+			"match",
+			/\/(app|desk)\/print-format\/(?!view\/)/
+		);
+		cy.location("pathname").then((path) => {
+			const created = decodeURIComponent(path.split("/").pop());
+			// match on the unique suffix — cy.type can drop leading characters
+			expect(created).to.contain(PF_NAME.split(" ").pop());
+			PF_NAME = created;
+			cy.call("frappe.client.get_value", {
+				doctype: "Print Format",
+				filters: { name: created },
+				fieldname: ["custom_format", "print_format_builder_beta", "html"],
+			}).then((r) => {
+				expect(Number(r.message.custom_format)).to.equal(1);
+				expect(Number(r.message.print_format_builder_beta)).to.equal(0);
+				expect(r.message.html).to.contain("print-format");
+			});
+		});
+	});
+
+	// 2c. The New dialog: "Builder" creates a builder format and opens the builder
+	it("creates a builder format from the dialog and opens the builder", () => {
+		cy.visit("/app/print-format");
+		cy.get(".page-head .primary-action", { timeout: 30000 }).should("be.visible").click();
+		cy.get_open_dialog().should("contain", "New Print Format");
+
+		// scope fills to the dialog — the list page has its own hidden doc_type field
+		cy.get_open_dialog().within(() => {
+			cy.fill_field("doc_type", "ToDo", "Link");
+			cy.fill_field("print_format_name", PF_NAME, "Data");
+			// start_with defaults to Builder
+			cy.findByRole("button", { name: "Create" }).click();
+		});
+
+		// the builder route carries the created doc's real name — read it back instead
+		// of trusting the typed string (cy.type can drop characters)
+		cy.location("pathname", { timeout: 20000 }).should(
+			"match",
+			/\/(app|desk)\/print-format-builder\//
+		);
+		cy.location("pathname").then((path) => {
+			const created = decodeURIComponent(path.split("/").pop());
+			// match on the unique suffix — cy.type can drop leading characters
+			expect(created).to.contain(PF_NAME.split(" ").pop());
+			PF_NAME = created;
+			cy.call("frappe.client.get_value", {
+				doctype: "Print Format",
+				filters: { name: created },
+				fieldname: ["custom_format", "print_format_builder_beta"],
+			}).then((r) => {
+				expect(Number(r.message.custom_format)).to.equal(0);
+				expect(Number(r.message.print_format_builder_beta)).to.equal(1);
+			});
+		});
+	});
+
 	// 3. Loading the builder for an existing format and saving a change
 	it("loads the builder and Save persists a margin change", () => {
 		cy.visit("/app");
@@ -1161,6 +1234,56 @@ context("Print Format Builder — draft and Save & Apply", () => {
 		}).then((r) => {
 			expect(Number(r.message.margin_top)).to.equal(19);
 			expect(r.message.draft_data).to.be.oneOf([null, ""]);
+		});
+	});
+
+	it("keeps Typst block markup through Save & Apply", () => {
+		const TYPST_PF_NAME = `${PF_NAME} Typst`;
+		cy.insert_doc("Print Format", {
+			name: TYPST_PF_NAME,
+			doc_type: "ToDo",
+			print_format_builder_beta: 1,
+			pdf_generator: "Typst",
+			format_data: JSON.stringify(
+				builder_layout([
+					{
+						label: "",
+						columns: [
+							{
+								label: "",
+								fields: [
+									{
+										label: "Typst",
+										fieldname: "typst_block_t",
+										fieldtype: "Typst",
+										custom: 1,
+										typst: "Task: {{ doc.description }}",
+									},
+								],
+							},
+						],
+					},
+				])
+			),
+		});
+		cy.visit(`/app/print-format-builder/${encodeURIComponent(TYPST_PF_NAME)}`);
+		cy.get(".typst-block-source", { timeout: 30000 }).should("contain", "doc.description");
+
+		cy.intercept(
+			"POST",
+			"api/method/frappe.printing.doctype.print_format.print_format.apply_draft"
+		).as("apply");
+		set_margin_top("18");
+		cy.get('[data-testid="page-status"]').should("contain", "Draft");
+		cy.contains(".page-actions .primary-action", "Save & Apply").click({ force: true });
+		cy.wait("@apply").its("response.statusCode").should("eq", 200);
+
+		cy.call("frappe.client.get_value", {
+			doctype: "Print Format",
+			filters: { name: TYPST_PF_NAME },
+			fieldname: ["format_data"],
+		}).then((r) => {
+			expect(r.message.format_data).to.contain("Task: {{ doc.description }}");
 		});
 	});
 
