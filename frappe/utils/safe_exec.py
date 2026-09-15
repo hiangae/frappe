@@ -150,7 +150,7 @@ def safe_eval(code, eval_globals=None, eval_locals=None):
 
 
 def _validate_safe_eval_syntax(code):
-	BLOCKED_NODES = (ast.NamedExpr,)
+	BLOCKED_NODES = (ast.NamedExpr, ast.Lambda)
 
 	tree = ast.parse(code, mode="eval")
 	for node in ast.walk(tree):
@@ -172,18 +172,115 @@ def safe_exec_flags():
 		frappe.flags.in_safe_exec -= 1
 
 
-def get_doc_as_dict(doctype, name):
-	assert isinstance(doctype, str)
-	assert isinstance(name, (str, int))
-	return frappe.get_doc(doctype, name).as_dict()
+class SafeDoc(frappe._dict):
+	"""An extension of frappe._dict that exposes safer subset of methods."""
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		for key, val in self.items():
+			if isinstance(val, list):
+				children = []
+				for v in val:
+					if isinstance(v, dict):
+						child = SafeDoc(v)
+						object.__setattr__(child, "parent_doc", self)
+						children.append(child)
+					else:
+						children.append(v)
+				self[key] = children
+
+	@property
+	def meta(self):
+		doctype = self.get("doctype")
+		if not isinstance(doctype, str):
+			return None
+		meta = frappe.get_meta(doctype)
+		return meta.as_dict() if meta else None
+
+	def get_formatted(
+		self,
+		fieldname,
+		doc=None,
+		currency=None,
+		absolute_value=False,
+		translated=False,
+		format=None,
+	):
+		from frappe.utils.formatters import format_value
+
+		meta = frappe.get_meta(self.get("doctype")) if self.get("doctype") else None
+		df = meta.get_field(fieldname) if meta else None
+
+		if not df:
+			from frappe.model.meta import get_default_df
+
+			df = get_default_df(fieldname)
+
+		if (
+			df
+			and df.fieldtype == "Currency"
+			and not currency
+			and (currency_field := df.get("options"))
+			and (currency_value := self.get(currency_field))
+		):
+			currency = frappe.db.get_value("Currency", currency_value, cache=True)
+
+		val = self.get(fieldname)
+
+		if translated:
+			val = _(val)
+
+		if not doc:
+			doc = getattr(self, "parent_doc", None) or self
+
+		if (absolute_value or doc.get("absolute_value")) and isinstance(val, int | float):
+			val = abs(val)
+
+		return format_value(val, df=df, doc=doc, currency=currency, format=format)
+
+	def get_label_from_fieldname(self, fieldname):
+		meta = frappe.get_meta(self.get("doctype")) if self.get("doctype") else None
+		df = meta.get_field(fieldname) if meta else None
+		return _(df.label) if df and df.label else None
+
+	def in_format_data(self, fieldname):
+		doc = getattr(self, "parent_doc", None) or self
+		format_data_map = doc.get("format_data_map")
+		if format_data_map:
+			return fieldname in format_data_map
+		return True
+
+	def is_print_hide(self, fieldname, df=None, for_print=True):
+		meta = frappe.get_meta(self.get("doctype")) if self.get("doctype") else None
+		meta_df = meta.get_field(fieldname) if meta else None
+
+		if meta_df and meta_df.get("__print_hide"):
+			return True
+
+		print_hide = 0
+
+		if self.get(fieldname) == 0 and not (meta and meta.istable):
+			print_hide = (df and df.print_hide_if_no_value) or (meta_df and meta_df.print_hide_if_no_value)
+
+		if not print_hide:
+			if df and df.print_hide is not None:
+				print_hide = df.print_hide
+			elif meta_df:
+				print_hide = meta_df.print_hide
+
+		return print_hide
+
+
+def get_doc_as_dict(*args, **kwargs):
+	return SafeDoc(frappe.get_doc(*args, **kwargs).as_dict())
 
 
 def safer_get_last_doc(*args, **kwargs):
-	return frappe.get_last_doc(*args, **kwargs).as_dict()
+	return SafeDoc(frappe.get_last_doc(*args, **kwargs).as_dict())
 
 
 def safer_get_cached_doc(*args, **kwargs):
-	return frappe.get_cached_doc(*args, **kwargs).as_dict()
+	return SafeDoc(frappe.get_cached_doc(*args, **kwargs).as_dict())
 
 
 def remove_unsafe_fields(fields):
@@ -241,8 +338,11 @@ def safer_log_error(
 	return {}
 
 
-def safer_get_visible_columns(*args, **kwargs):
-	cols = get_visible_columns(*args, **kwargs)
+def safer_get_visible_columns(data, _table_meta, df):
+	if not df.get("options"):
+		return []
+	real_meta = frappe.get_meta(df.get("options"))
+	cols = get_visible_columns(data, real_meta, df)
 	if cols is None:
 		return None
 	return [c if isinstance(c, dict) else c.as_dict() for c in cols]
@@ -351,10 +451,10 @@ def render_safe_globals():
 			user=user,
 			get_fullname=frappe.utils.get_fullname,
 			get_gravatar=frappe.utils.get_gravatar_url,
+			get_identicon=frappe.utils.get_identicon,
 			full_name=frappe.local.session.data.full_name
 			if getattr(frappe.local, "session", None) and getattr(frappe.local.session, "data", None)
 			else "Guest",
-			request=getattr(frappe.local, "request", {}),
 			session=frappe._dict(
 				user=user,
 				csrf_token=frappe.local.session.data.csrf_token
@@ -631,6 +731,7 @@ def check_safe_sql_query(query: str, throw: bool = True) -> bool:
 
 	Safe queries:
 	        1. Read only 'select' or 'explain' queries
+			2. CTE on mariadb where writes are not allowed.
 	"""
 
 	query = query.strip().lower()
@@ -645,7 +746,9 @@ def check_safe_sql_query(query: str, throw: bool = True) -> bool:
 			)
 		return False
 
-	if query.startswith(whitelisted_statements):
+	if query.startswith(whitelisted_statements) or (
+		query.startswith("with") and frappe.db.db_type == "mariadb"
+	):
 		return True
 
 	if throw:

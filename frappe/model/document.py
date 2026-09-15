@@ -999,8 +999,11 @@ class Document(BaseDocument):
 
 		return children
 
-	def run_method(self, method, *args, **kwargs):
+	def run_method(self, method: str, *args, **kwargs):
 		"""run standard triggers, plus those in hooks"""
+
+		if method.startswith("_"):
+			raise Exception("Run method is for hooks, avoid usage on internal methods")
 
 		def fn(self, *args, **kwargs):
 			method_object = getattr(self, method, None)
@@ -1105,7 +1108,7 @@ class Document(BaseDocument):
 		return self._cancel()
 
 	@frappe.whitelist()
-	def rename(self, name: str, merge=False, force=False, validate_rename=True):
+	def rename(self, name: str | int, merge: bool = False, force: bool = False, validate_rename: bool = True):
 		"""Rename the document to `name`. This transforms the current object."""
 		return self._rename(name=name, merge=merge, force=force, validate_rename=validate_rename)
 
@@ -1455,10 +1458,10 @@ class Document(BaseDocument):
 	@frappe.whitelist()
 	def add_comment(
 		self,
-		comment_type="Comment",
-		text=None,
-		comment_email=None,
-		comment_by=None,
+		comment_type: str = "Comment",
+		text: str | None = None,
+		comment_email: str | None = None,
+		comment_by: str | None = None,
 	):
 		"""Add a comment to this document.
 

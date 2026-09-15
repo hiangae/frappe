@@ -547,7 +547,10 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 
 	get_filters_from_setters() {
 		let me = this;
-		let filters = (this.get_query ? this.get_query().filters : {}) || {};
+		let query_filters = (this.get_query ? this.get_query().filters : {}) || {};
+		let filters = Array.isArray(query_filters)
+			? query_filters.slice()
+			: Object.assign({}, query_filters);
 		let filter_fields = [];
 
 		if ($.isArray(this.setters)) {
@@ -634,9 +637,8 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 
 	async add_parent_filters(filters) {
 		const parent_names = await this.get_filtered_parents_for_child_search();
-		if (parent_names.length) {
-			filters.push(["parent", "in", parent_names]);
-		}
+		// empty list must match nothing, else child search leaks every parent's rows
+		filters.push(["parent", "in", parent_names]);
 	}
 
 	add_custom_child_filters(filters) {

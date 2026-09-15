@@ -51,7 +51,7 @@ from .utils.jinja import (
 )
 from .utils.lazy_loader import lazy_import
 
-__version__ = "15.111.1"
+__version__ = "15.120.1"
 __title__ = "Frappe Framework"
 
 # This if block is never executed when running the code. It is only used for
@@ -134,6 +134,11 @@ def _(msg: str, lang: str | None = None, context: str | None = None) -> str:
 			return translated_string
 
 	return non_translated_string
+
+
+def N_(msg: str, context: str | None = None) -> str:
+	"""Mark a string for translation extraction without translating it."""
+	return msg
 
 
 def _lt(msg: str, lang: str | None = None, context: str | None = None):
@@ -239,7 +244,6 @@ def init(site: str, sites_path: str = ".", new_site: bool = False, force=False) 
 
 	local.user = None
 	local.user_perms = None
-	local.session = None
 	local.role_permissions = {}
 	local.valid_columns = {}
 	local.new_doc_templates = {}
@@ -250,8 +254,8 @@ def init(site: str, sites_path: str = ".", new_site: bool = False, force=False) 
 	local.cache = {}
 	local.form_dict = _dict()
 	local.preload_assets = {"style": [], "script": [], "icons": []}
-	local.session = _dict()
-	local.dev_server = _dev_server
+	local.session = _dict(user="Guest")
+	local.dev_server = _dev_server  # only for backwards compatibility
 	local.qb = get_query_builder(local.conf.db_type)
 	local.qb.get_query = get_query
 	setup_redis_cache_connection()
@@ -290,6 +294,7 @@ def connect(site: str | None = None, db_name: str | None = None, set_admin_as_us
 		password=local.conf.db_password,
 		cur_db_name=local.conf.db_name or db_name,
 	)
+
 	if set_admin_as_user:
 		set_user("Administrator")
 
@@ -720,6 +725,7 @@ def sendmail(
 	email_read_tracker_url=None,
 	x_priority: Literal[1, 3, 5] = 3,
 	email_headers=None,
+	redact_message_after_send=False,
 ) -> Optional["EmailQueue"]:
 	"""Send email using user's default **Email Account** or global default **Email Account**.
 
@@ -749,6 +755,7 @@ def sendmail(
 	:param with_container: Wraps email inside a styled container
 	:param x_priority: 1 = HIGHEST, 3 = NORMAL, 5 = LOWEST
 	:param email_headers: Additional headers to be added in the email, e.g. {"X-Custom-Header": "value"} or {"Custom-Header": "value"}. Automatically prepends "X-" to the header name if not present.
+	:param redact_message_after_send: Replace the message body with a placeholder once sent, for emails carrying sensitive content.
 	"""
 
 	if recipients is None:
@@ -806,6 +813,7 @@ def sendmail(
 		email_read_tracker_url=email_read_tracker_url,
 		x_priority=x_priority,
 		email_headers=email_headers,
+		redact_message_after_send=redact_message_after_send,
 	)
 
 	# build email queue and send the email if send_now is True.
@@ -912,6 +920,7 @@ def read_only():
 def write_only():
 	# if replica connection exists, we have to replace it momentarily with the primary connection
 	def innfn(fn):
+		@functools.wraps(fn)
 		def wrapper_fn(*args, **kwargs):
 			primary_db = getattr(local, "primary_db", None)
 			replica_db = getattr(local, "replica_db", None)
@@ -998,6 +1007,7 @@ def clear_cache(user: str | None = None, doctype: str | None = None):
 
 		reset_metadata_version()
 		local.cache = {}
+		local.valid_columns = {}
 		local.new_doc_templates = {}
 
 		for fn in get_hooks("clear_cache"):

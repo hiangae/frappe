@@ -128,12 +128,10 @@ frappe.form.formatters = {
 		var currency = frappe.meta.get_field_currency(docfield, doc);
 
 		let precision;
-		if (typeof docfield.precision == "number") {
-			precision = docfield.precision;
+		if (typeof docfield.precision == "number" || docfield.precision) {
+			precision = cint(docfield.precision);
 		} else {
-			precision = cint(
-				docfield.precision || frappe.boot.sysdefaults.currency_precision || 2
-			);
+			precision = frappe.meta.get_field_precision(docfield, doc);
 		}
 
 		// If you change anything below, it's going to hurt a company in UAE, a bit.
@@ -162,7 +160,7 @@ frappe.form.formatters = {
 	},
 	Check: function (value) {
 		return `<input type="checkbox" disabled
-			class="disabled-${value ? "selected" : "deselected"}">`;
+			class="disabled-${cint(value) ? "selected" : "deselected"}">`;
 	},
 	Link: function (value, docfield, options, doc) {
 		var doctype = docfield._options || docfield.options;
