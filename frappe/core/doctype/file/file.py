@@ -133,13 +133,16 @@ class File(Document):
 			return
 
 		if self.is_remote_file:
+			# a remote file has no local blob to hash
+			self.content_hash = None
 			self.validate_remote_file()
 		else:
 			self.save_file(content=self.get_content())
 			self.flags.new_file = True
 			frappe.db.after_rollback.add(self.on_rollback)
 
-		self.validate_duplicate_entry()  # Hash is generated in save_file
+		if not self.is_remote_file:
+			self.validate_duplicate_entry()  # Hash is generated in save_file
 
 	def after_insert(self):
 		if not self.is_folder:
@@ -174,8 +177,15 @@ class File(Document):
 				frappe.throw(_("A folder cannot have a File URL"))
 			return
 
+		if self.is_remote_file:
+			self.content_hash = None
+
 		self.validate_attachment_references()
 		self.enforce_public_file_restrictions()
+
+		# must run before handle_is_private_changed, which legitimately rewrites file_url
+		if not self.is_new() and self.has_value_changed("file_url"):
+			self.validate_private_file_access()
 
 		# when dict is passed to get_doc for creation of new_doc, is_new returns None
 		# this case is handled inside handle_is_private_changed
@@ -200,6 +210,13 @@ class File(Document):
 		if self.attached_to_field and SPECIAL_CHAR_PATTERN.search(self.attached_to_field):
 			frappe.throw(_("The fieldname you've specified in Attached To Field is invalid"))
 
+		if self.flags.ignore_permissions or frappe.flags.in_install:
+			return
+
+		from frappe.handler import check_write_permission
+
+		check_write_permission(self.attached_to_doctype, self.attached_to_name)
+
 	def enforce_public_file_restrictions(self):
 		if not self.is_private and frappe.get_system_settings(
 			"only_allow_system_managers_to_upload_public_files"
@@ -214,30 +231,30 @@ class File(Document):
 		if not self.file_url:
 			return
 
-		existing_files = frappe.get_all(
-			"File",
-			filters={"file_url": self.file_url},
-			fields=["name", "owner", "is_private"],
-			limit=1,
-		)
+		filters = {"file_url": self.file_url, "is_private": 1}
+		if not self.is_new():
+			filters["name"] = ["!=", self.name]
 
-		if not existing_files:
+		private_files = frappe.get_all("File", filters=filters, fields=["name", "owner"])
+		if not private_files:
 			return
 
-		existing_file = existing_files[0]
+		user = frappe.session.user
+		if user == "Administrator":
+			return
 
-		if existing_file.is_private:
-			user = frappe.session.user
-
-			if user == existing_file.owner or user == "Administrator":
+		# a file can be attached to multiple documents; access to any one of them is enough
+		for private_file in private_files:
+			if user == private_file.owner:
 				return
 
-			existing_doc = frappe.get_doc("File", existing_file.name)
-			if not has_permission(existing_doc, "read", user=user):
-				frappe.throw(
-					_("You do not have permission to access this file"),
-					frappe.PermissionError,
-				)
+			if has_permission(frappe.get_doc("File", private_file.name), "read", user=user):
+				return
+
+		frappe.throw(
+			_("You do not have permission to access this file"),
+			frappe.PermissionError,
+		)
 
 	def after_rename(self, *args, **kwargs):
 		for successor in self.get_successors():
@@ -1042,28 +1059,46 @@ class File(Document):
 		if self.file_url:
 			self.is_private = cint(self.file_url.startswith("/private"))
 
+	def validate_file_url_matches_record(self):
+		"""Ensure file_url actually resolves back to an existing File record with this name."""
+		if not self.file_url:
+			return
+
+		actual_file_url = frappe.db.get_value("File", self.name, "file_url") if self.name else None
+		if actual_file_url != self.file_url:
+			frappe.throw(_("The File URL does not belong to this File record"), frappe.PermissionError)
+
 	@frappe.whitelist()
 	def optimize_file(self):
 		if self.is_folder:
 			raise TypeError("Folders cannot be optimized")
 
+		self.validate_file_url_matches_record()
+
 		content_type = mimetypes.guess_type(self.file_name)[0]
 		is_local_image = content_type.startswith("image/") and self.file_size > 0
 		is_svg = content_type == "image/svg+xml"
+		is_local_pdf = content_type == "application/pdf" and self.file_size > 0
 
-		if not is_local_image:
-			raise NotImplementedError("Only local image files can be optimized")
+		if not (is_local_image or is_local_pdf):
+			raise NotImplementedError("Only local image or PDF files can be optimized")
 
 		if is_svg:
 			raise TypeError("Optimization of SVG images is not supported")
 
-		from frappe.utils.image import optimize_image
-
 		original_content = self.get_content()
-		optimized_content = optimize_image(
-			content=original_content,
-			content_type=content_type,
-		)
+
+		if is_local_pdf:
+			from frappe.utils.pdf import optimize_pdf
+
+			optimized_content = optimize_pdf(original_content)
+		else:
+			from frappe.utils.image import optimize_image
+
+			optimized_content = optimize_image(
+				content=original_content,
+				content_type=content_type,
+			)
 
 		if original_content == optimized_content:
 			# optimization failed, don't resave it
@@ -1160,8 +1195,16 @@ def get_permission_query_conditions(user: str | None = None) -> str:
 	if SYSTEM_USER_ROLE not in frappe.get_roles(user):
 		return f""" `tabFile`.`owner` = {frappe.db.escape(user)} """
 
+	# Custom DocPerm rows can outlive their DocType, drop those
+	# before frappe.get_meta() below assumes the doctype still exists.
+	candidate_doctypes = get_doctypes_with_read(user)
+	existing_doctypes = set(
+		frappe.get_all("DocType", filters={"name": ["in", candidate_doctypes]}, pluck="name")
+	)
+	readable_doctypes = [dt for dt in candidate_doctypes if dt in existing_doctypes]
+
 	openly_readable_doctypes, owner_restricted_doctypes = _split_doctypes_by_owner_constraint(
-		get_doctypes_with_read(user), user
+		readable_doctypes, user
 	)
 	# a doctype that requires an owner constraint is never additionally scoped by User
 	# Permissions here - same "if_owner takes priority, else check user permissions" rule

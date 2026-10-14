@@ -38,6 +38,7 @@ def download_pdf(
 	print_format: str | None = None,
 	letterhead: str | None = None,
 	settings: str | dict | None = None,
+	style: str | None = None,
 ):
 	from frappe.www.printview import resolve_print_format, validate_print
 
@@ -50,7 +51,9 @@ def download_pdf(
 		from frappe.utils.print_format import download_pdf as download_jinja_pdf
 
 		return download_jinja_pdf(doctype, name, format=print_format.name, letterhead=letterhead)
-	generator = PrintFormatGenerator(print_format, doc, letterhead, settings=frappe.parse_json(settings))
+	generator = PrintFormatGenerator(
+		print_format, doc, letterhead, style=style, settings=frappe.parse_json(settings)
+	)
 	pdf = generator.render_pdf()
 
 	frappe.local.response.filename = "{name}.pdf".format(name=name.replace(" ", "-").replace("/", "-"))
@@ -65,17 +68,24 @@ def get_typst_pdf(print_format, html, options, output, pdf_generator=None):
 	generator = getattr(frappe.local, "print_format_generator", None)
 	if generator is None:
 		from frappe.model.document import Document
+		from frappe.utils.print_utils import _print_format_doc_or_none
 
 		fd = frappe.form_dict
-		if not print_format or not fd.get("doctype") or not fd.get("name"):
+		if not fd.get("doctype") or not fd.get("name"):
 			return
-		pf = frappe.get_doc("Print Format", print_format)
-		if not pf.get("print_format_builder_beta"):
+		pf = _print_format_doc_or_none(print_format, fd.doctype)
+		if not pf or not pf.get("print_format_builder_beta"):
 			return
 		doc = fd.get("doc")
 		if not isinstance(doc, Document):
 			doc = frappe.get_doc(fd.doctype, fd.name)
-		generator = PrintFormatGenerator(pf, doc, fd.get("letterhead"), no_letterhead=fd.get("no_letterhead"))
+		generator = PrintFormatGenerator(
+			pf,
+			doc,
+			fd.get("letterhead"),
+			settings=frappe.parse_json(fd.get("settings")) if fd.get("settings") else None,
+			no_letterhead=fd.get("no_letterhead"),
+		)
 	return generator.render_typst_pdf(password=(options or {}).get("password"))
 
 
@@ -107,6 +117,24 @@ def get_qr_code(value: str) -> str:
 	stream = io.BytesIO()
 	qrcreate(value).svg(stream, scale=5, quiet_zone=1)
 	return "data:image/svg+xml;base64," + base64.b64encode(stream.getvalue()).decode()
+
+
+DATE_FIELDTYPES = ("Date", "Datetime")
+
+
+def format_field_value(doc, df) -> str:
+	"""The value a field prints: a Date or Datetime with its own `date_format` is
+	formatted with it, everything else the way `get_formatted` does."""
+	from frappe.utils.data import format_datetime, formatdate, get_user_time_format
+
+	fieldname = df.get("fieldname")
+	date_format = df.get("date_format")
+	value = doc.get(fieldname)
+	if date_format and value and df.get("fieldtype") in DATE_FIELDTYPES:
+		if df.get("fieldtype") == "Datetime":
+			return format_datetime(value, f"{date_format.replace('mm', 'MM')} {get_user_time_format()}")
+		return formatdate(value, date_format)
+	return doc.get_formatted(fieldname)
 
 
 @frappe.whitelist()
@@ -327,6 +355,7 @@ class PrintFormatGenerator:
 		self._header_absorbs_top_margin = False
 		self._logged_conditions = set()
 		self.letterhead = None
+		self.apply_classic_margin_defaults()
 
 		self.build_context()
 		self.layout = self.get_layout(self.print_format)
@@ -364,26 +393,49 @@ class PrintFormatGenerator:
 			return None
 		return frappe.get_doc("Letter Head", name)
 
+	def apply_page_overrides(self):
+		settings = self.print_settings
+		if settings.get("page_orientation") == "Landscape":
+			width, height = page_size_mm(settings)
+			settings.pdf_page_size = "Custom"
+			settings.pdf_page_width, settings.pdf_page_height = height, width
+		if settings.get("print_font"):
+			self.print_format.font = settings.get("print_font")
+
+	def apply_classic_margin_defaults(self):
+		from frappe.printing.doctype.print_format.classic_converter import (
+			MARGIN_FIELDS,
+			is_classic_layout,
+			missing_numeric_defaults,
+		)
+
+		if not is_classic_layout(self.print_format.format_data):
+			return
+		defaults = missing_numeric_defaults(self.print_format)
+		self.print_format.update({field: defaults[field] for field in MARGIN_FIELDS if field in defaults})
+
 	def build_context(self):
 		self.print_settings = frappe.get_doc("Print Settings")
 		if self.settings_override:
 			from frappe.www.printview import get_allowed_print_settings_override
 
 			self.print_settings.update(get_allowed_print_settings_override(self.doc, self.settings_override))
+			self.apply_page_overrides()
 
 		from frappe.www.printview import run_before_print
 
 		run_before_print(self.doc, self.print_settings.as_dict())
 		self.doc.flags.absolute_value = self.print_format.absolute_value
 
-		page_width = page_size_mm(self.print_settings)[0]
+		page_width, page_height = page_size_mm(self.print_settings)
 		body_width = page_width - self.print_format.margin_left - self.print_format.margin_right
 		style_name = self.style or self.print_settings.print_style
 		print_style = (
 			frappe.get_doc("Print Style", style_name)
-			if style_name and frappe.db.exists("Print Style", style_name)
+			if style_name and frappe.db.exists("Print Style", {"name": style_name, "disabled": 0})
 			else None
 		)
+		self.style_name = print_style.name if print_style else None
 		self.context = frappe._dict(
 			{
 				"doc": self.doc,
@@ -392,10 +444,12 @@ class PrintFormatGenerator:
 				"print_style": print_style,
 				"letterhead": self.letterhead,
 				"page_width": page_width,
+				"page_height": page_height,
 				"body_width": body_width,
 				"lang": frappe.local.lang,
 				"layout_direction": "rtl" if is_rtl() else "ltr",
 				"content_fieldtypes": CONTENT_FIELDTYPES,
+				"is_default_layout": bool(self.print_format.flags.is_default_layout),
 			}
 		)
 
@@ -446,8 +500,7 @@ class PrintFormatGenerator:
 
 		pf = self.print_format
 		generator_name = pf.get("pdf_generator") or "chrome"
-		# chrome renders below; wkhtmltopdf never reached hooks before this branch either
-		if generator_name not in ("chrome", "wkhtmltopdf"):
+		if generator_name != "chrome":
 			previous = getattr(frappe.local, "print_format_generator", None)
 			frappe.local.print_format_generator = self
 			try:
@@ -486,6 +539,7 @@ class PrintFormatGenerator:
 			options["header-includes-top-margin"] = True
 		if password:
 			options["password"] = password
+		options.update(self.page_options())
 		return get_chrome_pdf(
 			print_format=pf.name,
 			html=html,
@@ -493,6 +547,23 @@ class PrintFormatGenerator:
 			output=None,
 			pdf_generator="chrome",
 		)
+
+	def page_options(self) -> dict:
+		"""The page size as the Chrome renderer takes it, from the settings this
+		generator laid the page out for."""
+		from frappe.utils.print_utils import convert_uom
+
+		size = self.print_settings.get("pdf_page_size")
+		if not size:
+			return {}
+		options = {"page-size": size}
+		if size == "Custom":
+			# Print Settings holds mm; the renderer takes px
+			for option, setting in (("page-height", "pdf_page_height"), ("page-width", "pdf_page_width")):
+				value = self.print_settings.get(setting)
+				if value:
+					options[option] = convert_uom(value, "mm", "px", only_number=True)
+		return options
 
 	def render_typst_pdf(self, password=None):
 		"""Compile the resolved layout through Typst — ~10-15x faster than Chromium.
@@ -692,7 +763,11 @@ class PrintFormatGenerator:
 		if is_header and page_no_html:
 			body_parts = [self._reserve_top_margin("\n".join(body_parts))]
 		parts.extend(body_parts)
-		return "\n".join(parts) or None
+
+		from bs4 import BeautifulSoup
+
+		# Jinja branches can leave a tag open; unbalanced, the PDF parser folds the body into the overlay.
+		return str(BeautifulSoup("\n".join(parts), "html.parser")) or None
 
 	_ZONE_SECTION_TEMPLATE = (
 		'{%- import "templates/print_format/macros.html" as macros -%}'
@@ -748,6 +823,10 @@ class PrintFormatGenerator:
 			)
 			if not print_format.page_number or print_format.page_number == "Hide":
 				print_format.page_number = "Bottom Center"
+		if print_format.flags.is_default_layout:
+			from frappe.printing.print_style_presets import apply_style_preset
+
+			layout = apply_style_preset(layout, self.style_name)
 		return self.get_processed_layout(layout)
 
 	def get_processed_layout(self, layout):
@@ -919,6 +998,7 @@ class PrintFormatGenerator:
 		df["section"] = section
 		self.prepare_barcode(df)
 		self.prepare_linked_field(df)
+		self.prepare_date_format(df)
 		self.filter_conditional_rows(df)
 
 	def set_field_renderers(self, layout):
@@ -1017,6 +1097,14 @@ class PrintFormatGenerator:
 			df["_value"] = value
 			return
 		df["_value"] = frappe.format_value(value, df=target_df, doc=self.doc)
+
+	def prepare_date_format(self, df):
+		if (
+			df.get("date_format")
+			and df.get("fieldtype") in DATE_FIELDTYPES
+			and self.doc.get(df.get("fieldname"))
+		):
+			df["_value"] = format_field_value(self.doc, df)
 
 	def process_margin_texts(self, layout):
 		for key in (*self._TOP_POSITIONS, *self._BOTTOM_POSITIONS):

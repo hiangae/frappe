@@ -392,6 +392,10 @@ def execute_job(site, method, event, job_name, kwargs, user=None, is_async=True,
 			frappe.local.job.after_job.run()
 
 			if is_async:
+				if os.getenv("FRAPPE_SENTRY_DSN"):
+					import sentry_sdk
+
+					sentry_sdk.flush()
 				frappe.destroy()
 
 
@@ -425,7 +429,7 @@ def start_worker(
 	if quiet:
 		logging_level = "WARNING"
 
-	worker = Worker(queues, connection=redis_connection)
+	worker = FrappeBaseWorker(queues, connection=redis_connection)
 	worker.work(
 		logging_level=logging_level,
 		burst=burst,
@@ -436,7 +440,17 @@ def start_worker(
 	)
 
 
-class FrappeWorker(Worker):
+class FrappeBaseWorker(Worker):
+	def heartbeat(self, *args, **kwargs):
+		"""Re-register if the worker key expired, e.g. after host sleep or a Redis restart."""
+		# RQ keeps writing to an expired key, leaving a hash without pid or queues.
+		if not self.connection.hexists(self.key, "birth"):
+			self.connection.delete(self.key)
+			self.register_birth()
+		return super().heartbeat(*args, **kwargs)
+
+
+class FrappeWorker(FrappeBaseWorker):
 	def work(self, *args, **kwargs):
 		self.start_frappe_scheduler()
 		kwargs["with_scheduler"] = False  # Always disable RQ scheduler
