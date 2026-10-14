@@ -3,7 +3,7 @@ msgstr ""
 "Project-Id-Version: frappe\n"
 "Report-Msgid-Bugs-To: developers@frappe.io\n"
 "POT-Creation-Date: 2026-08-31 23:56+0000\n"
-"PO-Revision-Date: 2026-09-07 04:19\n"
+"PO-Revision-Date: 2026-10-05 04:24\n"
 "Last-Translator: developers@frappe.io\n"
 "Language-Team: Swedish\n"
 "MIME-Version: 1.0\n"
@@ -466,7 +466,7 @@ msgid "<h3>Print Format Help</h3>\n"
 msgstr "<h3>Utskrift Format Hjälp</h3>\n"
 "<hr>\n"
 "<h4>Introduktion</h4>\n"
-"<p>Utskrift Format renderas på serversida med Jinja Templating Language. Alla formulär har tillgång till<code>doc</code> objekt som innehåller information om dokumentet som formateras. Du kan också komma åt vanliga verktyg via<code>frappe</code> modul.</p>\n"
+"<p>Utskrift Format renderas på serversida med Jinja Templating Language. Alla formulär har tillgång till<code>doc</code> objekt som innehåller information om dokument som formateras. Du kan också komma åt vanliga verktyg via<code>frappe</code> modul.</p>\n"
 "<p>För still tillhandahålls Bootstrap CSS och du kan använda hela utbudet av klasser..</p>\n"
 "<hr>\n"
 "<h4>Referenser</h4>\n"
@@ -573,7 +573,7 @@ msgid "<h4>Email Reply Example</h4>\n\n"
 "<p>Templates are compiled using the Jinja Templating Language. To learn more about Jinja, <a class=\"strong\" href=\"http://jinja.pocoo.org/docs/dev/templates/\">read this documentation.</a></p>\n"
 msgstr "<h4>E-post Svar Exempel</h4>\n\n"
 "<pre>Order Försenad\n\n"
-"Transaktion {{ name }} har överskridit förfallodatum. Vänligen vidta nödvändiga åtgärder.\n\n"
+"Transaktion {{ name }} förfallodatum överskriden. Vidta nödvändiga åtgärder.\n\n"
 "Detaljer\n\n"
 "- Kund: {{ customer }}\n"
 "- Belopp: {{ grand_total }}\n"
@@ -1284,11 +1284,11 @@ msgstr "Lägg till Kant Längst Upp"
 
 #: frappe/desk/doctype/number_card/number_card.js:37
 msgid "Add Card to Dashboard"
-msgstr "Lägg till i Översikt Panel"
+msgstr "Lägg till i Översikt"
 
 #: frappe/public/js/frappe/views/reports/query_report.js:211
 msgid "Add Chart to Dashboard"
-msgstr "Lägg till Diagram i Översikt Panel"
+msgstr "Lägg till Diagram i Översikt"
 
 #: frappe/public/js/frappe/views/treeview.js:267
 msgid "Add Child"
@@ -1520,7 +1520,7 @@ msgstr "Lägg till flik"
 #: frappe/public/js/frappe/utils/dashboard_utils.js:263
 #: frappe/public/js/frappe/views/reports/query_report.js:253
 msgid "Add to Dashboard"
-msgstr "Lägg till i Översikt Panel"
+msgstr "Lägg till i Översikt"
 
 #: frappe/public/js/frappe/form/sidebar/assign_to.js:98
 msgid "Add to ToDo"
@@ -1754,7 +1754,7 @@ msgstr "Aggregerad Funktion baserad på"
 
 #: frappe/desk/doctype/dashboard_chart/dashboard_chart.py:403
 msgid "Aggregate Function field is required to create a dashboard chart"
-msgstr "Aggregerad Funktion fält erfodras att skapa Översikt Panel Diagram"
+msgstr "Aggregerad Funktion fält erfodras att skapa Översikt Diagram"
 
 #. Label of a Card Break in the Tools Workspace
 #: frappe/automation/workspace/tools/tools.json
@@ -2820,7 +2820,7 @@ msgstr "Uppgift Klar"
 #. Label of a Table field in DocType 'Assignment Rule'
 #: frappe/automation/doctype/assignment_rule/assignment_rule.json
 msgid "Assignment Days"
-msgstr "Automation Dagar"
+msgstr "Automatisering Dagar"
 
 #. Name of a DocType
 #. Label of a Link in the Tools Workspace
@@ -2831,17 +2831,17 @@ msgstr "Automation Dagar"
 #: frappe/automation/workspace/tools/tools.json
 #: frappe/core/doctype/doctype/doctype.json frappe/desk/doctype/todo/todo.json
 msgid "Assignment Rule"
-msgstr "Automation Regel"
+msgstr "Automatisering Regel"
 
 #. Name of a DocType
 #: frappe/automation/doctype/assignment_rule_day/assignment_rule_day.json
 msgid "Assignment Rule Day"
-msgstr "Automation Regel Dag"
+msgstr "Automatisering Regel Dag"
 
 #. Name of a DocType
 #: frappe/automation/doctype/assignment_rule_user/assignment_rule_user.json
 msgid "Assignment Rule User"
-msgstr "Automation Regel Användare"
+msgstr "Automatisering Regel Användare"
 
 #: frappe/automation/doctype/assignment_rule/assignment_rule.py:56
 msgid "Assignment Rule is not allowed on document type {0}"
@@ -2850,7 +2850,7 @@ msgstr "Tilldelning Regel är ej tillåten på dokument typ {0}"
 #. Label of a Section Break field in DocType 'Assignment Rule'
 #: frappe/automation/doctype/assignment_rule/assignment_rule.json
 msgid "Assignment Rules"
-msgstr "Automation Regler"
+msgstr "Automatisering Regler"
 
 #: frappe/desk/doctype/notification_log/notification_log.py:238
 msgid "Assignment Update on {0}"
@@ -3502,7 +3502,7 @@ msgstr "Bakgrundsutskrift (erfordras för >25 dokument)"
 #: frappe/core/doctype/system_settings/system_settings.json
 #: frappe/desk/doctype/system_health_report/system_health_report.json
 msgid "Background Workers"
-msgstr "Bakgrund Tjänster"
+msgstr "Bakgrund Processer"
 
 #: frappe/integrations/doctype/google_drive/google_drive.py:172
 msgid "Backing up Data."
@@ -4001,7 +4001,7 @@ msgstr "Utveckla"
 #. Description of a Card Break in the Build Workspace
 #: frappe/core/workspace/build/build.json
 msgid "Build your own reports, print formats, and dashboards. Create personalized workspaces for easier navigation"
-msgstr "Skapa egna rapporter, utskrift format och översikt paneler. Skapa personliga arbetsytor för enklare navigering"
+msgstr "Skapa egna rapporter, utskrift format och översikter. Skapa personliga arbetsytor för enklare navigering"
 
 #: frappe/workflow/doctype/workflow/workflow_list.js:18
 msgid "Build {0}"
@@ -4520,7 +4520,7 @@ msgstr "Kan inte ta bort {0} eftersom det har underordnade noder"
 
 #: frappe/desk/doctype/dashboard/dashboard.py:48
 msgid "Cannot edit Standard Dashboards"
-msgstr "Kan inte redigera standard översikt panel"
+msgstr "Kan inte redigera standard översikt"
 
 #: frappe/email/doctype/notification/notification.py:136
 msgid "Cannot edit Standard Notification. To edit, please disable this and duplicate it"
@@ -4739,7 +4739,7 @@ msgstr "Ändra Utskrift Format"
 #: frappe/desk/page/user_profile/user_profile_controller.js:51
 #: frappe/desk/page/user_profile/user_profile_controller.js:59
 msgid "Change User"
-msgstr "Växla Användare"
+msgstr "Byt Användare"
 
 #. Description of the 'Update Series Counter' (Section Break) field in DocType
 #. 'Document Naming Settings'
@@ -5557,7 +5557,7 @@ msgstr "Slutför Registrering"
 #: frappe/public/js/frappe/ui/slides.js:360
 msgctxt "Finish the setup wizard"
 msgid "Complete Setup"
-msgstr "Slutför Konfiguration"
+msgstr "Slutför Inställningar"
 
 #. Option for the 'Status' (Select) field in DocType 'Auto Repeat'
 #. Option for the 'Status' (Select) field in DocType 'Prepared Report'
@@ -5642,7 +5642,7 @@ msgstr "Villkor"
 #. Label of a Section Break field in DocType 'Social Login Key'
 #: frappe/integrations/doctype/social_login_key/social_login_key.json
 msgid "Configuration"
-msgstr "Konfiguration"
+msgstr "Inställningar"
 
 #: frappe/public/js/frappe/views/reports/report_view.js:513
 msgid "Configure Chart"
@@ -6431,7 +6431,7 @@ msgstr "Anpassad CSS"
 #. Label of a Section Break field in DocType 'Number Card'
 #: frappe/desk/doctype/number_card/number_card.json
 msgid "Custom Configuration"
-msgstr "Anpassad Konfiguration"
+msgstr "Anpassade Inställningar"
 
 #. Name of a DocType
 #: frappe/core/doctype/custom_docperm/custom_docperm.json
@@ -6630,7 +6630,7 @@ msgstr "Anpassa Undertabell"
 
 #: frappe/public/js/frappe/views/dashboard/dashboard_view.js:38
 msgid "Customize Dashboard"
-msgstr "Anpassa Översikt Panel"
+msgstr "Anpassa Översikt"
 
 #. Label of a Link in the Build Workspace
 #. Label of a shortcut in the Build Workspace
@@ -6789,55 +6789,55 @@ msgstr "Mörk Tema"
 #: frappe/desk/doctype/workspace_shortcut/workspace_shortcut.json
 #: frappe/public/js/frappe/ui/toolbar/search_utils.js:562
 msgid "Dashboard"
-msgstr "Översikt Panel"
+msgstr "Översikt"
 
 #. Label of a Link in the Build Workspace
 #. Name of a DocType
 #: frappe/core/workspace/build/build.json
 #: frappe/desk/doctype/dashboard_chart/dashboard_chart.json
 msgid "Dashboard Chart"
-msgstr "Översikt Panel Diagram"
+msgstr "Översikt Diagram"
 
 #. Name of a DocType
 #: frappe/desk/doctype/dashboard_chart_field/dashboard_chart_field.json
 msgid "Dashboard Chart Field"
-msgstr "Översikt Panel Diagram Fält"
+msgstr "Översikt Diagram Fält"
 
 #. Name of a DocType
 #: frappe/desk/doctype/dashboard_chart_link/dashboard_chart_link.json
 msgid "Dashboard Chart Link"
-msgstr "Översikt Panel Diagram Länk"
+msgstr "Översikt Diagram Länk"
 
 #. Name of a DocType
 #: frappe/desk/doctype/dashboard_chart_source/dashboard_chart_source.json
 msgid "Dashboard Chart Source"
-msgstr "Översikt Panel Diagram Källa"
+msgstr "Översikt Diagram Källa"
 
 #. Name of a role
 #: frappe/desk/doctype/dashboard/dashboard.json
 #: frappe/desk/doctype/dashboard_chart/dashboard_chart.json
 #: frappe/desk/doctype/number_card/number_card.json
 msgid "Dashboard Manager"
-msgstr "Översikt Panel Ansvarig"
+msgstr "Översikt Ansvarig"
 
 #. Label of a Data field in DocType 'Dashboard'
 #: frappe/desk/doctype/dashboard/dashboard.json
 msgid "Dashboard Name"
-msgstr "Översikt Panel Namn"
+msgstr "Översikt Namn"
 
 #. Name of a DocType
 #: frappe/desk/doctype/dashboard_settings/dashboard_settings.json
 msgid "Dashboard Settings"
-msgstr "Översikt Panel Inställningar"
+msgstr "Översikt Inställningar"
 
 #: frappe/public/js/frappe/list/base_list.js:203
 msgid "Dashboard View"
-msgstr "Översikt Panel Vy"
+msgstr "Översikt Vy"
 
 #. Label of a Tab Break field in DocType 'Workspace'
 #: frappe/desk/doctype/workspace/workspace.json
 msgid "Dashboards"
-msgstr "Översikt Paneler"
+msgstr "Översikter"
 
 #. Label of a Card Break in the Tools Workspace
 #. Label of a Code field in DocType 'Deleted Document'
@@ -7125,7 +7125,7 @@ msgstr "Standard Inkommande"
 #. Label of a Check field in DocType 'Letter Head'
 #: frappe/printing/doctype/letter_head/letter_head.json
 msgid "Default Letter Head"
-msgstr "Standard Sidhuvud"
+msgstr "Standard Brevhuvud"
 
 #. Option for the 'Action' (Select) field in DocType 'Amended Document Naming
 #. Settings'
@@ -8375,7 +8375,7 @@ msgstr "Dokument Upplåst"
 
 #: frappe/public/js/frappe/list/list_view.js:1111
 msgid "Document has been cancelled"
-msgstr "Dokumentet är annullerad"
+msgstr "Dokument är annullerad"
 
 #: frappe/public/js/frappe/list/list_view.js:1110
 msgid "Document has been submitted"
@@ -8383,7 +8383,7 @@ msgstr "Dokument är godkänd"
 
 #: frappe/public/js/frappe/list/list_view.js:1109
 msgid "Document is in draft state"
-msgstr "Dokumentet är i utkast tillstånd"
+msgstr "Dokument är i utkast tillstånd"
 
 #: frappe/public/js/frappe/form/workflow.js:47
 msgid "Document is only editable by users with role"
@@ -8391,7 +8391,7 @@ msgstr "Dokument kan endast redigeras av användare med roll"
 
 #: frappe/core/doctype/communication/communication.js:185
 msgid "Document not Relinked"
-msgstr "Dokumentet är inte länkad om"
+msgstr "Dokument är inte länkad om"
 
 #: frappe/model/rename_doc.py:216 frappe/public/js/frappe/form/toolbar.js:164
 msgid "Document renamed from {0} to {1}"
@@ -8403,7 +8403,7 @@ msgstr "Dokument namn ändring från {0} till {1} är i kö"
 
 #: frappe/desk/doctype/dashboard_chart/dashboard_chart.py:390
 msgid "Document type is required to create a dashboard chart"
-msgstr "Dokument Typ erfodras för att skapa Översikt Panel Diagram"
+msgstr "Dokument Typ erfodras för att skapa Översikt Diagram"
 
 #: frappe/core/doctype/deleted_document/deleted_document.py:46
 msgid "Document {0} Already Restored"
@@ -10894,7 +10894,7 @@ msgstr "Filter"
 #. Label of a Code field in DocType 'Number Card'
 #: frappe/desk/doctype/number_card/number_card.json
 msgid "Filters Configuration"
-msgstr "Filter Konfiguration"
+msgstr "Filter Inställningar"
 
 #. Label of a HTML field in DocType 'Auto Email Report'
 #: frappe/email/doctype/auto_email_report/auto_email_report.json
@@ -11720,7 +11720,7 @@ msgstr "Hämta Fält"
 
 #: frappe/printing/doctype/letter_head/letter_head.js:46
 msgid "Get Header and Footer wkhtmltopdf variables"
-msgstr "Hämta Sidhuvud och Sidfot wkhtmltopdf variabler"
+msgstr "Hämta Brevhuvud och Sidfot wkhtmltopdf variabler"
 
 #: frappe/public/js/frappe/form/multi_select_dialog.js:87
 msgid "Get Items"
@@ -11728,7 +11728,7 @@ msgstr "Hämta Artiklar"
 
 #: frappe/integrations/doctype/connected_app/connected_app.js:6
 msgid "Get OpenID Configuration"
-msgstr "Hämta OpenID Konfiguration"
+msgstr "Hämta OpenID Inställningar"
 
 #: frappe/www/printview.html:22
 msgid "Get PDF"
@@ -12122,7 +12122,7 @@ msgstr "Gruppera Efter Typ"
 
 #: frappe/desk/doctype/dashboard_chart/dashboard_chart.py:401
 msgid "Group By field is required to create a dashboard chart"
-msgstr "Gruppera Efter Fält erfodras för att skapa Översikt Panel"
+msgstr "Gruppera Efter Fält erfodras för att skapa Översikt"
 
 #. Label of a Data field in DocType 'LDAP Settings'
 #: frappe/integrations/doctype/ldap_settings/ldap_settings.json
@@ -12299,21 +12299,21 @@ msgstr "HTML från bilaga {0}"
 #. Label of a Code field in DocType 'Letter Head'
 #: frappe/printing/doctype/letter_head/letter_head.json
 msgid "Header Script"
-msgstr "Sidhuvud Skript"
+msgstr "Brevhuvud Skript"
 
 #. Label of a Section Break field in DocType 'Web Page'
 #: frappe/website/doctype/web_page/web_page.json
 msgid "Header and Breadcrumbs"
-msgstr "Sidhuvud och Brödsmulor"
+msgstr "Brevhuvud och Brödsmulor"
 
 #. Label of a Tab Break field in DocType 'Website Settings'
 #: frappe/website/doctype/website_settings/website_settings.json
 msgid "Header, Robots"
-msgstr "Sidhuvud, Robotar"
+msgstr "Brevhuvud, Robotar"
 
 #: frappe/printing/doctype/letter_head/letter_head.js:31
 msgid "Header/Footer scripts can be used to add dynamic behaviours."
-msgstr "Skript för Sidhuvud/Sidfot kan användas för att lägga till dynamisk beteende."
+msgstr "Skript för Brevhuvud/Sidfot kan användas för att lägga till dynamisk beteende."
 
 #. Label of a Table field in DocType 'Webhook'
 #. Label of a Code field in DocType 'Webhook Request Log'
@@ -12807,7 +12807,7 @@ msgstr "Idx"
 #. 'System Settings'
 #: frappe/core/doctype/system_settings/system_settings.json
 msgid "If Apply Strict User Permission is checked and User Permission is defined for a DocType for a User, then all the documents where value of the link is blank, will not be shown to that User"
-msgstr "Om Använd Strikt Användare Behörighet är vald och Användare Behörighet är definierad för DocType för Användare, kommer inte alla dokument där länk värde är tomt att visas för Användare"
+msgstr "Om Tillämpa Strikta Användare Behörigheter är vald och Användare Behörighet är definierad för DocType för Användare, kommer inte alla dokument där länk värde är tomt att visas för Användare"
 
 #. Description of the 'Don't Override Status' (Check) field in DocType
 #. 'Workflow'
@@ -13505,7 +13505,7 @@ msgstr "Ofullständiga inloggning detaljer"
 
 #: frappe/email/smtp.py:106
 msgid "Incorrect Configuration"
-msgstr "Felaktig Konfiguration"
+msgstr "Felaktig Inställningar"
 
 #: frappe/utils/csvutils.py:241
 msgid "Incorrect URL"
@@ -15227,18 +15227,18 @@ msgstr "Brevhuvud"
 #. Label of a Select field in DocType 'Letter Head'
 #: frappe/printing/doctype/letter_head/letter_head.json
 msgid "Letter Head Based On"
-msgstr "Sidhuvud Baserad På"
+msgstr "Brevhuvud Baserad På"
 
 #. Label of a Section Break field in DocType 'Letter Head'
 #: frappe/printing/doctype/letter_head/letter_head.json
 msgid "Letter Head Image"
-msgstr "Sidhuvud Bild"
+msgstr "Brevhuvud Bild"
 
 #. Label of a Data field in DocType 'Letter Head'
 #: frappe/printing/doctype/letter_head/letter_head.json
 #: frappe/public/js/print_format_builder/LetterHeadEditor.vue:198
 msgid "Letter Head Name"
-msgstr "Sidhuvud Namn"
+msgstr "Brevhuvud Namn"
 
 #: frappe/printing/doctype/letter_head/letter_head.js:30
 msgid "Letter Head Scripts"
@@ -15252,7 +15252,7 @@ msgstr "Brevhuvud kan inte vara både Inaktiverad och Standard"
 #. Head'
 #: frappe/printing/doctype/letter_head/letter_head.json
 msgid "Letter Head in HTML"
-msgstr "Sidhuvud i HTML"
+msgstr "Brevhuvud i HTML"
 
 #. Label of a Int field in DocType 'Custom DocPerm'
 #. Label of a Int field in DocType 'DocPerm'
@@ -17368,7 +17368,7 @@ msgstr "Ny {0} skapad"
 
 #: frappe/public/js/frappe/views/reports/query_report.js:386
 msgid "New {0} {1} added to Dashboard {2}"
-msgstr "Ny {0} {1} har lagts till i Översikt Panel {2}"
+msgstr "Ny {0} {1} har lagts till i Översikt {2}"
 
 #: frappe/public/js/frappe/views/reports/query_report.js:391
 msgid "New {0} {1} created"
@@ -17680,7 +17680,7 @@ msgstr "Inga tillåtna Diagram"
 
 #: frappe/core/page/dashboard_view/dashboard_view.js:92
 msgid "No Permitted Charts on this Dashboard"
-msgstr "Inga tillåtna Diagram på denna Översikt Panel"
+msgstr "Inga tillåtna Diagram på denna Översikt"
 
 #: frappe/printing/doctype/print_settings/print_settings.js:13
 msgid "No Preview"
@@ -18552,7 +18552,7 @@ msgstr "OTP platshållare ska definieras som <code>{{ otp }}</code> "
 
 #: frappe/templates/includes/login/login.js:353
 msgid "OTP setup using OTP App was not completed. Please contact Administrator."
-msgstr "OTP Konfiguration med OTP App slutfördes inte. Kontakta Administratör."
+msgstr "OTP Inställningar med OTP App slutfördes inte. Kontakta Administratör."
 
 #. Label of a Int field in DocType 'System Health Report Errors'
 #: frappe/desk/doctype/system_health_report_errors/system_health_report_errors.json
@@ -18904,11 +18904,11 @@ msgstr "Öppna {0}"
 #. Label of a Data field in DocType 'Connected App'
 #: frappe/integrations/doctype/connected_app/connected_app.json
 msgid "OpenID Configuration"
-msgstr "OpenID Konfiguration"
+msgstr "OpenID Inställningar"
 
 #: frappe/integrations/doctype/connected_app/connected_app.js:15
 msgid "OpenID Configuration fetched successfully!"
-msgstr "OpenID Konfiguration hämtad!"
+msgstr "OpenID Inställningar hämtade!"
 
 #. Option for the 'Directory Server' (Select) field in DocType 'LDAP Settings'
 #: frappe/integrations/doctype/ldap_settings/ldap_settings.json
@@ -19054,7 +19054,7 @@ msgstr "Original"
 #: frappe/core/doctype/version/version_view.html:74
 #: frappe/core/doctype/version/version_view.html:139
 msgid "Original Value"
-msgstr "Ursprung Värde"
+msgstr "Gamla Värde"
 
 #. Option for the 'Address Type' (Select) field in DocType 'Address'
 #. Option for the 'Type' (Select) field in DocType 'Communication'
@@ -19427,7 +19427,7 @@ msgstr "Överordnad Tabell"
 
 #: frappe/desk/doctype/dashboard_chart/dashboard_chart.py:397
 msgid "Parent document type is required to create a dashboard chart"
-msgstr "Överordnad Dokument Typ erfodras för att skapa ett Översikt Panel Diagram"
+msgstr "Överordnad Dokument Typ erfodras för att skapa ett Översikt Diagram"
 
 #: frappe/core/doctype/data_export/exporter.py:254
 msgid "Parent is the name of the document to which the data will get added to."
@@ -19616,7 +19616,7 @@ msgstr "Sökväg {0} är inte giltigt sökväg"
 #. Label of a Int field in DocType 'Data Import'
 #: frappe/core/doctype/data_import/data_import.json
 msgid "Payload Count"
-msgstr "Payload Antal"
+msgstr "Datamängd Antal"
 
 #. Label of a Int field in DocType 'Prepared Report'
 #: frappe/core/doctype/prepared_report/prepared_report.json
@@ -19804,7 +19804,7 @@ msgstr "Tillåtna Roller"
 #. Option for the 'Address Type' (Select) field in DocType 'Address'
 #: frappe/contacts/doctype/address/address.json
 msgid "Personal"
-msgstr "Personal"
+msgstr "Personlig"
 
 #: frappe/public/js/frappe/views/workspace/workspace.js:34
 msgctxt "Workspace Category"
@@ -19953,7 +19953,7 @@ msgstr "Lägg till App"
 
 #: frappe/utils/dashboard.py:58
 msgid "Please check the filter values set for Dashboard Chart: {}"
-msgstr "Kontrollera filter värden angivna för Översikt Panel Diagram: {}"
+msgstr "Kontrollera filter värden angivna för Översikt Diagram: {}"
 
 #: frappe/model/base_document.py:881
 msgid "Please check the value of \"Fetch From\" set for field {0}"
@@ -20059,7 +20059,7 @@ msgstr "Ange Klient hemlighet innan social inloggning är aktiverad"
 
 #: frappe/integrations/doctype/connected_app/connected_app.py:54
 msgid "Please enter OpenID Configuration URL"
-msgstr "Ange OpenID Konfiguration URL"
+msgstr "Ange OpenID Inställningar URL"
 
 #: frappe/integrations/doctype/social_login_key/social_login_key.py:84
 msgid "Please enter Redirect URL"
@@ -20246,7 +20246,7 @@ msgstr "Vänligen ange dokument namn"
 
 #: frappe/desk/doctype/dashboard/dashboard.py:120
 msgid "Please set the following documents in this Dashboard as standard first."
-msgstr "Ange följande dokument i Översikt Panel som standard."
+msgstr "Ange följande dokument i Översikt som standard."
 
 #: frappe/core/doctype/document_naming_settings/document_naming_settings.py:120
 msgid "Please set the series to be used."
@@ -20832,7 +20832,7 @@ msgstr "Dokument Utskrift"
 #. Label of a Check field in DocType 'Print Settings'
 #: frappe/printing/doctype/print_settings/print_settings.json
 msgid "Print with letterhead"
-msgstr "Utskrift med Sidhuvud"
+msgstr "Utskrift med Brevhuvud"
 
 #: frappe/printing/page/print/print.js:833
 msgid "Printer"
@@ -21154,12 +21154,12 @@ msgstr "Lila"
 #: frappe/integrations/doctype/push_notification_settings/push_notification_settings.json
 #: frappe/integrations/workspace/integrations/integrations.json
 msgid "Push Notification Settings"
-msgstr "Tryck ut Avisering Inställningar"
+msgstr "Push Avisering Inställningar"
 
 #. Label of a Card Break in the Integrations Workspace
 #: frappe/integrations/workspace/integrations/integrations.json
 msgid "Push Notifications"
-msgstr "Tryck ut Aviseringar"
+msgstr "Push Aviseringar"
 
 #. Label of a Check field in DocType 'Google Calendar'
 #: frappe/integrations/doctype/google_calendar/google_calendar.json
@@ -21362,7 +21362,7 @@ msgstr "RQ Jobb"
 #. Name of a DocType
 #: frappe/core/doctype/rq_worker/rq_worker.json
 msgid "RQ Worker"
-msgstr "RQ Tjänst"
+msgstr "RQ Process"
 
 #. Option for the 'Naming Rule' (Select) field in DocType 'DocType'
 #. Option for the 'Naming Rule' (Select) field in DocType 'Customize Form'
@@ -21735,7 +21735,7 @@ msgstr "Referens DocType"
 
 #: frappe/desk/doctype/form_tour/form_tour.js:38
 msgid "Referance Doctype and Dashboard Name both can't be used at the same time."
-msgstr "Referens Doctype och Översikt Panel kan inte användas samtidigt."
+msgstr "Referens Doctype och Översikt kan inte användas samtidigt."
 
 #. Label of a Section Break field in DocType 'Address'
 #. Label of a Section Break field in DocType 'Contact'
@@ -22186,7 +22186,7 @@ msgstr "Upprepa"
 #. Label of a Check field in DocType 'Print Settings'
 #: frappe/printing/doctype/print_settings/print_settings.json
 msgid "Repeat Header and Footer"
-msgstr "Upprepa Sidhuvud och Sidfot"
+msgstr "Upprepa Brevhuvud och Sidfot"
 
 #. Label of a Select field in DocType 'Event'
 #: frappe/desk/doctype/event/event.json
@@ -22590,7 +22590,7 @@ msgstr "Återställ Diagram"
 
 #: frappe/public/js/frappe/views/dashboard/dashboard_view.js:39
 msgid "Reset Dashboard Customizations"
-msgstr "Återställ Översikt Panel Anpassningar"
+msgstr "Återställ Översikt Anpassningar"
 
 #: frappe/public/js/frappe/list/list_settings.js:230
 msgid "Reset Fields"
@@ -23193,7 +23193,7 @@ msgstr "Regler med högre prioritet nummer tillämpas först."
 #. Label of a Int field in DocType 'System Settings'
 #: frappe/core/doctype/system_settings/system_settings.json
 msgid "Run Jobs only Daily if Inactive For (Days)"
-msgstr "Kör Jobb endast Dagligen om de har varit inaktiva i (Antal Dagar)"
+msgstr "Kör Jobb en gång om dagen om de har varit inaktiva i (Antal Dagar)"
 
 #. Description of the 'Enable Scheduled Jobs' (Check) field in DocType 'System
 #. Settings'
@@ -23861,7 +23861,7 @@ msgstr "Visa alla tidigare rapporter."
 #: frappe/public/js/frappe/form/form.js:1161
 #: frappe/website/doctype/contact_us_settings/contact_us_settings.js:4
 msgid "See on Website"
-msgstr "Visa på Webbplats"
+msgstr "Visa Webbplats"
 
 #: frappe/website/doctype/web_form/templates/web_form.html:159
 msgctxt "Button in web form"
@@ -23962,7 +23962,7 @@ msgstr "Välj Valuta"
 #: frappe/desk/doctype/form_tour/form_tour.json
 #: frappe/public/js/frappe/utils/dashboard_utils.js:240
 msgid "Select Dashboard"
-msgstr "Välj Översikt Panel"
+msgstr "Välj Översikt"
 
 #. Option for the 'Timespan' (Select) field in DocType 'Dashboard Chart'
 #: frappe/desk/doctype/dashboard_chart/dashboard_chart.json
@@ -24664,7 +24664,7 @@ msgstr "Skapa Diagram"
 #. Description of the 'Chart Options' (Code) field in DocType 'Dashboard'
 #: frappe/desk/doctype/dashboard/dashboard.json
 msgid "Set Default Options for all charts on this Dashboard (Ex: \"colors\": [\"#d1d8dd\", \"#ff5858\"])"
-msgstr "Ange Standard Alternativ för alla diagram för Översikt Panel (Ex: 'färger': ['#d1d8dd', '#ff5858'])"
+msgstr "Ange Standard Alternativ för alla diagram för Översikt (Ex: 'färger': ['#d1d8dd', '#ff5858'])"
 
 #: frappe/desk/doctype/dashboard_chart/dashboard_chart.js:467
 #: frappe/desk/doctype/number_card/number_card.js:384
@@ -25069,7 +25069,7 @@ msgstr "Visa Valuta Symbol efter Belopp"
 #: frappe/custom/doctype/customize_form_field/customize_form_field.json
 #: frappe/desk/doctype/dashboard/dashboard.js:6
 msgid "Show Dashboard"
-msgstr "Visa Översikt Panel"
+msgstr "Visa Översikt"
 
 #. Label of a Button field in DocType 'Access Log'
 #: frappe/core/doctype/access_log/access_log.json
@@ -25298,7 +25298,7 @@ msgstr "Visa fler detaljer"
 #. Label of a Check field in DocType 'DocField'
 #: frappe/core/doctype/docfield/docfield.json
 msgid "Show on Timeline"
-msgstr "Visa på Tidslinje"
+msgstr "Visa Tidslinje"
 
 #. Description of the 'Stats Time Interval' (Select) field in DocType 'Number
 #. Card'
@@ -26486,7 +26486,7 @@ msgstr "Ändra Tema"
 
 #: frappe/templates/includes/navbar/navbar_login.html:17
 msgid "Switch To Desk"
-msgstr "Växla till Skrivbord"
+msgstr "Byt till Skrivbord"
 
 #: frappe/public/js/frappe/list/list_sidebar.js:296
 msgid "Switch to Frappe CRM for smarter sales"
@@ -26621,7 +26621,7 @@ msgstr "System Status Rapport Tabeller"
 #. Name of a DocType
 #: frappe/desk/doctype/system_health_report_workers/system_health_report_workers.json
 msgid "System Health Report Workers"
-msgstr "System Status Rapport Tjänster"
+msgstr "System Status Rapport Processer"
 
 #. Label of a Card Break in the Build Workspace
 #: frappe/core/workspace/build/build.json
@@ -27130,7 +27130,7 @@ msgstr "Nästa Schemalagda datum kan inte vara senare än Slut Datum."
 
 #: frappe/integrations/doctype/push_notification_settings/push_notification_settings.py:29
 msgid "The Push Relay Server URL key (`push_relay_server_url`) is missing in your site config"
-msgstr "Tryck ut Relä Server URL nyckel (`push_relay_server_url`) saknas i webbplats konfiguration"
+msgstr "Push Relä Server URL nyckel (`push_relay_server_url`) saknas i webbplats konfiguration"
 
 #: frappe/website/doctype/personal_data_deletion_request/personal_data_deletion_request.py:364
 msgid "The User record for this request has been auto-deleted due to inactivity by system admins."
@@ -27208,7 +27208,7 @@ msgstr "Följande Tilldelning Dagar är återkommande: {0}"
 
 #: frappe/printing/doctype/letter_head/letter_head.js:34
 msgid "The following Header Script will add the current date to an element in 'Header HTML' with class 'header-content'"
-msgstr "Följande Sidhuvud Skript kommer att lägga till aktuell datum till ett element i \"Sidhuvud HTML\" med klass \"header-content\""
+msgstr "Följande Brevhuvud Skript kommer att lägga till aktuell datum till ett element i \"Brevhuvud HTML\" med klass \"header-content\""
 
 #: frappe/core/doctype/data_import/importer.py:1053
 msgid "The following values are invalid: {0}. Values must be one of {1}"
@@ -27228,7 +27228,7 @@ msgstr "Länk du försöker logga in med är ogiltig eller har upphört att gäl
 
 #: frappe/website/doctype/web_page/web_page.js:125
 msgid "The meta description is an HTML attribute that provides a brief summary of a web page. Search engines such as Google often display the meta description in search results, which can influence click-through rates."
-msgstr "Meta beskrivning är HTML egenskap som ger kort översikt av webbplats. Sök motorer som Google visar ofta meta beskrivning i sök resultat, vilket kan påverka klick värdena."
+msgstr "Meta beskrivning är HTML egenskap som ger kort översikt av webbplats. Söksystem som Google visar ofta meta beskrivning i sök resultat, vilket kan påverka klick värdena."
 
 #: frappe/website/doctype/web_page/web_page.js:132
 msgid "The meta image is unique image representing the content of the page. Images for this Card should be at least 280px in width, and at least 150px in height."
@@ -27896,7 +27896,7 @@ msgstr "Tid i sekunder att behålla QR Kod Bild på server. Min: <strong>240</st
 
 #: frappe/desk/doctype/dashboard_chart/dashboard_chart.py:406
 msgid "Time series based on is required to create a dashboard chart"
-msgstr "Tid Nummer Serier baserade på erfodras för att skapa Översikt Panel"
+msgstr "Tid Nummer Serier baserade på erfodras för att skapa Översikt"
 
 #: frappe/public/js/frappe/form/controls/time.js:107
 msgid "Time {0} must be in format: {1}"
@@ -28197,38 +28197,38 @@ msgstr "Idag"
 
 #: frappe/public/js/frappe/views/reports/report_view.js:1592
 msgid "Toggle Chart"
-msgstr "Växla Diagram"
+msgstr "Byt Diagram"
 
 #. Label of a standard navbar item
 #. Type: Action
 #: frappe/hooks.py
 msgid "Toggle Full Width"
-msgstr "Växla Full Bredd"
+msgstr "Byt Full Bredd"
 
 #: frappe/public/js/frappe/views/file/file_view.js:23
 msgid "Toggle Grid View"
-msgstr "Växla Rutnät Vy"
+msgstr "Byt Rutnät Vy"
 
 #: frappe/public/js/frappe/views/workspace/workspace.js:212
 msgid "Toggle Section: {0}"
-msgstr "Växla Sektion: {0}"
+msgstr "Byt Sektion: {0}"
 
 #: frappe/public/js/frappe/ui/page.js:194
 #: frappe/public/js/frappe/ui/page.js:196
 #: frappe/public/js/frappe/views/reports/report_view.js:1596
 msgid "Toggle Sidebar"
-msgstr "Växla Sidofält"
+msgstr "Byt Sidofält"
 
 #: frappe/public/js/frappe/list/list_view.js:1758
 msgctxt "Button in list view menu"
 msgid "Toggle Sidebar"
-msgstr "Växla Sidofält"
+msgstr "Byt Sidofält"
 
 #. Label of a standard navbar item
 #. Type: Action
 #: frappe/hooks.py
 msgid "Toggle Theme"
-msgstr "Växla Tema"
+msgstr "Byt Tema"
 
 #. Option for the 'Response Type' (Select) field in DocType 'OAuth Client'
 #: frappe/integrations/doctype/oauth_client/oauth_client.json
@@ -28363,7 +28363,7 @@ msgstr "Totalt"
 #. Label of a Int field in DocType 'System Health Report'
 #: frappe/desk/doctype/system_health_report/system_health_report.json
 msgid "Total Background Workers"
-msgstr "Totalt Antal Bakgrund Tjänster"
+msgstr "Totalt Antal Bakgrund Processer"
 
 #. Label of a Int field in DocType 'System Health Report'
 #: frappe/desk/doctype/system_health_report/system_health_report.json
@@ -29706,7 +29706,7 @@ msgstr "Användare kan endast ta bort bifogade filer om dokument antingen är i 
 #. 'Energy Point Rule'
 #: frappe/social/doctype/energy_point_rule/energy_point_rule.json
 msgid "Users assigned to the reference document will get points."
-msgstr "Användare som är tilldelad till referens dokumentet får poäng."
+msgstr "Användare som är tilldelad till referens dokument får poäng."
 
 #: frappe/public/js/frappe/ui/theme_switcher.js:70
 msgid "Uses system's theme to switch between light and dark mode"
@@ -30036,7 +30036,7 @@ msgstr "Visad av"
 #: frappe/core/doctype/doctype/doctype.json
 #: frappe/core/workspace/build/build.json
 msgid "Views"
-msgstr "Vyer"
+msgstr "Visningar"
 
 #. Label of a Check field in DocType 'DocField'
 #: frappe/core/doctype/docfield/docfield.json
@@ -31099,7 +31099,7 @@ msgstr "Du {0}"
 
 #: frappe/printing/page/print_format_builder/print_format_builder.js:743
 msgid "You can add dynamic properties from the document by using Jinja templating."
-msgstr "Du kan lägga till dynamiska egenskaper från dokumentet med Jinja mall."
+msgstr "Du kan lägga till dynamiska egenskaper från dokument med Jinja mall."
 
 #: frappe/printing/doctype/letter_head/letter_head.js:43
 msgid "You can also access wkhtmltopdf variables (valid only in PDF print):"
@@ -31203,7 +31203,7 @@ msgstr "Du annullerade detta dokument {1}"
 
 #: frappe/desk/doctype/dashboard_chart/dashboard_chart.py:410
 msgid "You cannot create a dashboard chart from single DocTypes"
-msgstr "Du kan inte skapa Översikt Panel Diagram från Enskilda DocTypes"
+msgstr "Du kan inte skapa Översikt Diagram från Enskilda DocTypes"
 
 #: frappe/social/doctype/energy_point_log/energy_point_log.py:45
 msgid "You cannot give review points to yourself"
@@ -31953,7 +31953,7 @@ msgstr "mörkgrå"
 
 #: frappe/core/page/dashboard_view/dashboard_view.js:65
 msgid "dashboard"
-msgstr "översikt panel"
+msgstr "översikt"
 
 #. Option for the 'Date Format' (Select) field in DocType 'System Settings'
 #: frappe/core/doctype/system_settings/system_settings.json
@@ -33152,7 +33152,7 @@ msgstr "{0} Diagram"
 #: frappe/public/js/frappe/utils/utils.js:943
 #: frappe/public/js/frappe/views/dashboard/dashboard_view.js:12
 msgid "{0} Dashboard"
-msgstr "{0} Översikt Panel"
+msgstr "{0} Översikt"
 
 #: frappe/public/js/frappe/form/grid_row.js:468
 #: frappe/public/js/frappe/list/list_settings.js:227
@@ -33861,7 +33861,7 @@ msgstr "{0} delade detta dokument med {1}"
 
 #: frappe/core/doctype/doctype/doctype.py:323
 msgid "{0} should be indexed because it's referred in dashboard connections"
-msgstr "{0} bör indexeras eftersom den hänvisas till i översikt panel anslutningar"
+msgstr "{0} bör indexeras eftersom den hänvisas till i översikt anslutningar"
 
 #: frappe/automation/doctype/auto_repeat/auto_repeat.py:144
 msgid "{0} should not be same as {1}"
@@ -33934,7 +33934,7 @@ msgstr "{0} {1} lagd till"
 
 #: frappe/public/js/frappe/utils/dashboard_utils.js:270
 msgid "{0} {1} added to Dashboard {2}"
-msgstr "{0} {1} är lagd till i Översikt Panel {2}"
+msgstr "{0} {1} är lagd till i Översikt {2}"
 
 #: frappe/model/base_document.py:602 frappe/model/rename_doc.py:99
 msgid "{0} {1} already exists"

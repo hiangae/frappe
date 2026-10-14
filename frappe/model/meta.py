@@ -17,7 +17,7 @@ Example:
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import click
 
@@ -52,7 +52,6 @@ DEFAULT_FIELD_LABELS = {
 	"owner": _lt("Created By"),
 	"_user_tags": _lt("Tags"),
 	"_liked_by": _lt("Liked By"),
-	"_comments": _lt("Comments"),
 	"_assign": _lt("Assigned To"),
 }
 
@@ -226,7 +225,8 @@ class Meta(Document):
 		if not hasattr(self, "_valid_columns"):
 			table_exists = frappe.db.table_exists(self.name)
 			if self.name in self.special_doctypes and table_exists:
-				self._valid_columns = get_table_columns(self.name)
+				# `_comments` is a cache column, never a readable field
+				self._valid_columns = [c for c in get_table_columns(self.name) if c != "_comments"]
 			else:
 				self._valid_columns = self.default_fields + [
 					df.fieldname for df in self.get("fields") if df.fieldtype in data_fieldtypes
@@ -457,8 +457,14 @@ class Meta(Document):
 			return
 
 		if frappe.db.estimate_count(self.name) > LARGE_TABLE_SIZE_THRESHOLD:
-			recent_change = frappe.db.get_value(self.name, {}, "modified", order_by="modified desc")
-			if get_datetime(recent_change) > add_to_date(None, days=-1 * LARGE_TABLE_RECENCY_THRESHOLD):
+			# Raw SQL to prevent querying meta when already in meta
+			recent_change = frappe.db.sql(  # nosemgrep
+				f"SELECT `modified` FROM `tab{self.name}` ORDER BY `modified` DESC LIMIT 1"
+			)
+			# NOTE: should not require use of zone -information, minimal comparison, to prevent querying meta when in meta.
+			if recent_change and get_datetime(recent_change[0][0]) > (
+				datetime.now() + timedelta(days=(-1 * LARGE_TABLE_RECENCY_THRESHOLD))
+			):
 				self.is_large_table = True
 
 	def init_field_caches(self):

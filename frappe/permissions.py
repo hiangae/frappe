@@ -190,6 +190,19 @@ def has_permission(
 		debug and _debug_log("Checking if document/doctype is explicitly shared with user")
 		perm = false_if_not_shared()
 
+	# select permission is implied by read permission
+	if not perm and ptype == "select":
+		perm = has_permission(
+			doctype,
+			ptype="read",
+			doc=doc,
+			user=user,
+			raise_exception=raise_exception,
+			parent_doctype=parent_doctype,
+			debug=debug,
+			ignore_share_permissions=ignore_share_permissions,
+		)
+
 	return bool(perm)
 
 
@@ -460,8 +473,8 @@ def has_controller_permissions(doc, ptype, user=None, debug=False) -> bool:
 	return True
 
 
-def get_doctypes_with_read():
-	return list({cstr(p.parent) for p in get_valid_perms() if p.parent and p.read})
+def get_doctypes_with_read(user=None):
+	return list({cstr(p.parent) for p in get_valid_perms(user=user) if p.parent and p.read})
 
 
 def get_valid_perms(doctype=None, user=None):
