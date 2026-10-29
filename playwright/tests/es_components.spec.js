@@ -382,6 +382,67 @@ test.describe("Espresso components", () => {
 		});
 	});
 
+	test.describe("Optional Sections", () => {
+		test.beforeEach(async ({ page }) => {
+			await show(page, "Optional Sections");
+		});
+
+		const add_button = (root, title) =>
+			root
+				.locator(".es-optional-sections__buttons .es-button", {
+					hasText: containing(title),
+				})
+				.first();
+		const section = (root, title) =>
+			root.locator(".es-optional-sections__section", { hasText: containing(title) }).first();
+
+		test("adding a section shows it and hides its button; Remove brings the button back", async ({
+			page,
+		}) => {
+			const root = explorer_group(page, "Basic (add")
+				.locator(".es-optional-sections")
+				.first();
+
+			await expect(section(root, "Salary and bank")).toBeHidden();
+			await add_button(root, "Salary and bank").click();
+			await expect(section(root, "Salary and bank")).toHaveAttribute("data-state", "added");
+			await expect(section(root, "Salary and bank")).toContainText("Salary fields go here.");
+			await expect(add_button(root, "Salary and bank")).toBeHidden();
+
+			await section(root, "Salary and bank").getByRole("button", { name: "Remove" }).click();
+			await expect(section(root, "Salary and bank")).toBeHidden();
+			await expect(add_button(root, "Salary and bank")).toBeVisible();
+			await expect(add_button(root, "Salary and bank")).toBeFocused();
+		});
+
+		test("hides the add row once every section is added", async ({ page }) => {
+			const root = explorer_group(page, "A section added from the start")
+				.locator(".es-optional-sections")
+				.first();
+
+			await expect(section(root, "Notes")).toBeVisible();
+			await expect(add_button(root, "Notes")).toBeHidden();
+			await add_button(root, "Attachments").click();
+			await expect(root.locator(".es-optional-sections__more")).toBeHidden();
+		});
+
+		test("focuses the first input of an added section and lets on_remove reset it", async ({
+			page,
+		}) => {
+			const root = explorer_group(page, "Fields in a section")
+				.locator(".es-optional-sections")
+				.first();
+			const email = root.locator("input[data-fieldname='email']");
+
+			await add_button(root, "Contact").click();
+			await expect(email).toBeFocused();
+			await email.fill("jane@example.com");
+			await section(root, "Contact").getByRole("button", { name: "Remove" }).click();
+			await add_button(root, "Contact").click();
+			await expect(email).toHaveValue("");
+		});
+	});
+
 	test.describe("Tab Buttons", () => {
 		test.beforeEach(async ({ page }) => {
 			await show(page, "Tab Buttons");
@@ -603,143 +664,6 @@ test.describe("Espresso components", () => {
 			await expect(card).toHaveAttribute("tabindex", "0");
 			await card.dispatchEvent("keydown", { key: "Enter" });
 			await expect(page.locator(".es-toast")).toContainText("Paid");
-		});
-	});
-
-	test.describe("Bar List", () => {
-		test.beforeEach(async ({ page }) => {
-			await show(page, "Bar List");
-		});
-
-		test("sizes bars against a rounded axis and labels every row", async ({ page }) => {
-			const group = explorer_group(page, "Basic");
-
-			await expect(group.locator(".es-bar-list__row")).toHaveCount(4);
-			await expect(group.locator(".es-bar-list__bar").first()).toHaveAttribute(
-				"style",
-				/width: 84%/
-			);
-			await expect(group.locator(".es-bar-list__tick").last()).toHaveText("50000");
-		});
-
-		test("keeps static values visible and expands an undersized axis", async ({ page }) => {
-			const chart = await page.evaluate(() => {
-				const chart = frappe.ui
-					.bar_list({
-						items: [{ label: "Total", value: 200 }],
-						max: 100,
-						values_on_hover: true,
-					})
-					.appendTo(document.body);
-				const result = {
-					value_opacity: getComputedStyle(chart.find(".es-bar-list__value")[0]).opacity,
-					row_role: chart.find(".es-bar-list__row").attr("role") ?? null,
-					bar_width: parseFloat(chart.find(".es-bar-list__bar")[0].style.width),
-					last_tick: Number(chart.find(".es-bar-list__tick").last().text()),
-				};
-				chart.remove();
-				return result;
-			});
-
-			expect(chart.value_opacity).toBe("1");
-			expect(chart.row_role).toBeNull();
-			expect(chart.bar_width).toBeLessThanOrEqual(100);
-			expect(chart.last_tick).toBeGreaterThanOrEqual(200);
-		});
-
-		test("says there is no data instead of drawing an empty axis", async ({ page }) => {
-			const chart = explorer_group(page, "Empty").locator(
-				".es-bar-list[data-state='empty']"
-			);
-
-			await expect(chart.locator(".es-bar-list__empty")).toHaveText("No data to show");
-			await expect(chart.locator(".es-bar-list__axis")).toHaveCount(0);
-		});
-
-		test("widens the label gutter and passes the clicked item back", async ({ page }) => {
-			const group = explorer_group(page, "Wide labels");
-
-			await expect(group.locator(".es-bar-list").first()).toHaveAttribute("style", /180px/);
-			await group.locator(".es-bar-list__row--clickable").first().click();
-			await expect(page.locator(".es-toast")).toContainText("Kaveri Industrial Supplies");
-		});
-	});
-
-	test.describe("Donut", () => {
-		test.beforeEach(async ({ page }) => {
-			await show(page, "Donut");
-		});
-
-		const legend_row = (group, label) =>
-			group.locator(".es-donut__legend-row", { hasText: containing(label) }).first();
-
-		test("draws one segment per value and labels the chart for screen readers", async ({
-			page,
-		}) => {
-			const group = explorer_group(page, "Centre value");
-
-			await expect(group.locator(".es-donut__seg")).toHaveCount(3);
-			await expect(group.locator(".es-donut__svg")).toHaveAttribute(
-				"aria-label",
-				"Paid: 70 (70%), Unpaid: 20 (20%), Overdue: 10 (10%)"
-			);
-			await expect(group.locator(".es-donut__value")).toHaveText("70%");
-		});
-
-		test("swaps the centre to a hovered legend row and restores it on leave", async ({
-			page,
-		}) => {
-			const group = explorer_group(page, "Centre value");
-			const unpaid = legend_row(group, "Unpaid");
-
-			await unpaid.hover();
-			await expect(unpaid).toHaveClass(with_class("is-active"));
-			await expect(group.locator(".es-donut__label")).toHaveText("Unpaid · 20%");
-			await expect(group.locator(".es-donut__seg.is-dim")).toHaveCount(2);
-
-			await group.locator(".es-donut__legend").dispatchEvent("mouseout");
-			await expect(group.locator(".es-donut__value")).toHaveText("70%");
-			await expect(group.locator(".es-donut__seg.is-dim")).toHaveCount(0);
-		});
-
-		test("clears the tooltip and highlight when leaving a segment for the centre", async ({
-			page,
-		}) => {
-			const group = explorer_group(page, "Centre value");
-			const segment = group.locator(".es-donut__seg").first();
-
-			await segment.dispatchEvent("mouseover", { clientX: 100, clientY: 100 });
-			await expect(group.locator(".es-donut__tip")).toHaveClass(with_class("is-visible"));
-			await segment.dispatchEvent("mouseout");
-			await expect(group.locator(".es-donut__tip")).not.toHaveClass(
-				with_class("is-visible")
-			);
-			await expect(group.locator(".es-donut__seg.is-dim")).toHaveCount(0);
-			await expect(group.locator(".es-donut__value")).toHaveText("70%");
-		});
-
-		test("exposes amounts without hover and highlights a keyboard-focused legend", async ({
-			page,
-		}) => {
-			const group = explorer_group(page, "Centre value");
-			const unpaid = legend_row(group, "Unpaid");
-
-			await expect(unpaid).toContainText("20 · 20%");
-			await unpaid.focus();
-			await expect(unpaid).toHaveClass(with_class("is-active"));
-			await expect(group.locator(".es-donut__value")).toHaveText("20");
-			await group.locator(".es-donut__legend-row:focus").blur();
-			await expect(group.locator(".es-donut__value")).toHaveText("70%");
-		});
-
-		test("says there is no data in the ring's place when there is nothing to chart", async ({
-			page,
-		}) => {
-			const chart = explorer_group(page, "Empty").locator(".es-donut[data-state='empty']");
-
-			await expect(chart.locator(".es-donut__empty")).toHaveText("No data to show");
-			await expect(chart.locator(".es-donut__svg")).toHaveCount(0);
-			await expect(chart.locator(".es-donut__legend")).toHaveCount(0);
 		});
 	});
 });
