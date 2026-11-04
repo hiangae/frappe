@@ -120,7 +120,7 @@ body {
 .flow-palette-row {
 	display: flex;
 	width: 100%;
-	height: 32px;
+	min-height: 32px; /* a row with a description grows past it */
 	align-items: center;
 	gap: 8px;
 	padding: 0 11px;
@@ -131,6 +131,13 @@ body {
 }
 .flow-palette-row + .flow-palette-row {
 	margin-top: 2px;
+}
+/* a phone's menus and lists at the chat's text size */
+@media (max-width: 767px) and (pointer: coarse) {
+	.menu-content [data-slot="item-list-row"],
+	.flow-palette-row {
+		font-size: theme(fontSize.md);
+	}
 }
 .flow-palette-hint {
 	color: var(--ink-gray-4);
@@ -233,7 +240,8 @@ body {
 /* Focus rings need Tab (focusRings.js marks the root): focus a script moves after a key
    press, like a dialog's first tab or a closed menu's trigger, matches :focus-visible too.
    Text fields keep their own focus look. */
-:root:not([data-flow-tabbing]) :focus-visible:not(input, textarea, [contenteditable]) {
+:root:not([data-flow-tabbing]) :focus-visible:not(input, textarea, [contenteditable]),
+:host(:not([data-flow-tabbing])) :focus-visible:not(input, textarea, [contenteditable]) {
 	outline: none;
 }
 
@@ -370,8 +378,7 @@ body {
 .flow-thread .text-base {
 	font-size: var(--flow-step-text, calc(var(--flow-chat-text, 15px) - 1px));
 }
-/* the draft (its box and the highlight under it) follows too, its size only from 640px:
-   phones keep the 16px that stops iPhone Safari zooming into the box */
+/* the draft (its box and the highlight under it) follows too, its size only from 640px */
 .flow-draft > textarea,
 .flow-draft > div {
 	font-weight: var(--flow-chat-weight, 420);
@@ -380,17 +387,6 @@ body {
 	.flow-draft > textarea,
 	.flow-draft > div {
 		font-size: var(--flow-chat-text, 15px);
-	}
-}
-/* an iPhone's other fields too (searches, settings forms); only iOS knows -webkit-touch-callout,
-   so other phones keep the fields as drawn */
-@supports (-webkit-touch-callout: none) {
-	@media (max-width: 767px) {
-		input:not([type="checkbox"], [type="radio"], [type="range"]),
-		textarea:not(.flow-draft > *),
-		select {
-			font-size: 16px !important;
-		}
 	}
 }
 

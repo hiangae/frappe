@@ -167,14 +167,13 @@ test("an opened tool row shows its output, or a host's views of its arguments an
 	assert.equal(el.querySelector("pre").textContent, "/project")
 	assert.equal(el.querySelector("[data-test=args]"), null)
 
-	// a host's argument view shows before the result, and stays above the output once it lands
+	// a call opens once its result lands: a host's argument view above the output
 	const step = reactive({ call: { id: "c1", name: "update_document", arguments: args } })
 	const host = mount(t, ToolGroup, { steps: [step] }, { options: { presentTool: () => ({ argsComponent: ArgsView }) }, state: {} })
-	host.el.querySelector("button").click()
-	await nextTick()
-	assert.equal(host.el.querySelector("[data-test=args] dd").textContent, "Paid")
-	assert.equal(host.el.querySelector("pre"), null)
+	assert.equal(host.el.querySelector("button"), null)
 	step.result = { content: "Document updated" }
+	await nextTick()
+	host.el.querySelector("button").click()
 	await nextTick()
 	assert.equal(host.el.querySelector("[data-test=args] dd").textContent, "Paid")
 	assert.equal(host.el.querySelector("pre").textContent, "Document updated")
@@ -187,10 +186,9 @@ test("an opened tool row shows its output, or a host's views of its arguments an
 		stat: result ? "3 updated" : "",
 	})
 	const own = mount(t, ToolGroup, { steps: [viewed] }, { options: { presentTool }, state: {} })
-	own.el.querySelector("button").click()
-	await nextTick()
-	assert.equal(own.el.querySelector("[data-test=args] dd").textContent, "Paid")
 	viewed.result = { content: "3 records" }
+	await nextTick()
+	own.el.querySelector("button").click()
 	await nextTick()
 	assert.equal(own.el.querySelector("[data-test=result] td").textContent, "Paid")
 	assert.equal(own.el.querySelector("[data-test=args]"), null)
@@ -225,6 +223,28 @@ test("an approval card names the call and shows what it will do, in a host's own
 	assert.deepEqual([...standalone.el.querySelectorAll("pre")].map((pre) => pre.textContent), ["pwd", "- before+ after"])
 })
 
+test("a host view that answers its card gets the call and replaces the card's buttons", async (t) => {
+	const answers = []
+	const AnswersItself = {
+		props: ["arguments", "call"],
+		setup: (props) => () =>
+			h("button", { "data-test": "own", onClick: () => answers.push([props.call.id, "Approve"]) }, "Save"),
+	}
+	const flow = { options: { presentTool: () => ({ argsComponent: AnswersItself, ownAnswers: true }) } }
+	const { el } = mount(t, ApprovalCard, { call: { id: "c7", name: "request_secret", args } }, flow)
+	assert.deepEqual([...el.querySelectorAll("button")].map((button) => button.textContent), ["Save"])
+	el.querySelector("[data-test=own]").click()
+	assert.deepEqual(answers, [["c7", "Approve"]])
+})
+
+test("a host view that declares a call prop reads the call and keeps the card's buttons", async (t) => {
+	const ReadsPrompt = { props: { arguments: Object, call: Object }, setup: (props) => () => h("p", props.call.prompt) }
+	const flow = { options: { presentTool: () => ({ argsComponent: ReadsPrompt }) } }
+	const { el } = mount(t, ApprovalCard, { call: { id: "c8", name: "run_action", args, prompt: "Assign To: Add\nToDo: Call the courier" } }, flow)
+	assert.ok(el.querySelector("p").textContent.includes("ToDo: Call the courier"))
+	assert.deepEqual([...el.querySelectorAll("button")].map((button) => button.textContent), ["Ask for changes", "Deny", "Approve"])
+})
+
 test("a host picks a row's stat and dropdown, but the user's decision and an error outrank it", async (t) => {
 	const presentTool = () => ({ stat: "3 updated" })
 	const step = { call: { id: "c1", name: "update_document", arguments: args }, result: { content: "ok", details: { lines: 12 } } }
@@ -233,7 +253,7 @@ test("a host picks a row's stat and dropdown, but the user's decision and an err
 	assert.ok(el.textContent.includes("3 updated"))
 	assert.ok(!el.textContent.includes("12 lines"))
 
-	const denied = { call: { id: "c2", name: "update_document", arguments: args }, result: { content: '{"status": "denied"}' } }
+	const denied = { call: { id: "c2", name: "update_document", arguments: args }, result: { content: '{"status": "denied"}', details: { user_answer: "Deny" } } }
 	const card = mount(t, ToolGroup, { steps: [denied] }, { options: { presentTool }, state: {} })
 	await nextTick()
 	assert.ok(card.el.textContent.includes("denied"))
@@ -306,7 +326,7 @@ test("a host fills the composer with its pickers, commands, palette pages and wo
 	const commands = [{ name: "agents", label: "Agent", icon: "user", hint: "choose the agent", view: "agents" }, "model"]
 	const modes = [
 		{ id: "ask", label: "Ask first", desc: "Pauses before documents change." },
-		{ id: "auto", label: "Just do it", desc: "Never asks." },
+		{ id: "auto_approve", label: "Just do it", desc: "Never asks." },
 	]
 	const host = reactive({ disabled: false })
 	const { el, vm } = mount(t, {
@@ -533,17 +553,17 @@ test("a reply's suggested replies wait under it: a tap sends one, or ticks sever
 		send: async (text) => !!sent.push(text),
 	}
 	let seq = 0
-	const reply = (id, args) => {
+	const reply = (args) => {
 		for (const event of [
 			{ type: "run_started" },
 			{ type: "user_message", content: "go" },
-			{ type: "assistant_message", content: [{ type: "text", text: "Which?" }, { type: "tool_call", id, name: "suggest_replies", arguments: args }] },
-			{ type: "tool_result", tool_call_id: id, name: "suggest_replies", content: "[shown]", details: { multi_select: false, ...args } },
+			{ type: "assistant_message", content: [{ type: "text", text: "Which?" }] },
 			{ type: "run_ended", reason: "done" },
+			{ type: "replies_suggested", multi_select: false, ...args },
 		])
 			applyEvent(conversation, { ...event, seq: ++seq })
 	}
-	reply("s1", { replies: ["Yes", "No"] })
+	reply({ replies: ["Yes", "No"] })
 	const { el } = mount(t, MessageList, {}, flow)
 	await nextTick()
 	const button = (label, root = el) => [...root.querySelectorAll("button")].find((b) => b.textContent.trim() === label)
@@ -551,7 +571,7 @@ test("a reply's suggested replies wait under it: a tap sends one, or ticks sever
 	assert.deepEqual(sent, ["Yes"])
 
 	// a pick-several set sends the ticked answers together, in its order
-	reply("s2", { replies: ["CRM", "Helpdesk", "HR"], multi_select: true })
+	reply({ replies: ["CRM", "Helpdesk", "HR"], multi_select: true })
 	await nextTick()
 	assert.equal(button("Yes"), undefined)
 	assert.ok(button("Send").classList.contains("invisible")) // until something is ticked
@@ -2778,12 +2798,19 @@ test("a header with its sidebar hidden leads with its button and, once the chat 
 	await nextTick()
 	assert.deepEqual([rows(), done], [[], ["settings:true", "s2"]])
 
-	// an open chat's menu, by its title, holds its own items alone
+	// an open chat's menu ends a wide frame's header and sits by the title in a narrow one; it holds
+	// its own items alone
 	flow.state.sessionId = "s2"
 	flow.state.session = { title: "Expense claims" }
 	await nextTick()
 	assert.deepEqual(buttons(hidden), ["Show sidebar", "New chat", "Chat options"])
+	assert.deepEqual(buttons(el), ["Recent chats", "New chat", "Manage", "Chat options"])
+	layout.narrow = true
+	t.after(() => (layout.narrow = false))
+	await nextTick()
 	assert.deepEqual(buttons(el), ["Chat options", "Recent chats", "New chat", "Manage"])
+	layout.narrow = false
+	await nextTick()
 	el.querySelector("button[title='Chat options']").click()
 	await nextTick()
 	assert.deepEqual(items().map((item) => item.textContent), ["Rename", "Delete"])
