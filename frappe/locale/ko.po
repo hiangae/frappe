@@ -18291,7 +18291,7 @@ msgstr "{0} 메일 없음"
 #: frappe/public/js/frappe/form/grid_row.js:243
 msgctxt "Title of the 'row number' column"
 msgid "No."
-msgstr "아니요."
+msgstr "No."
 
 #. Label of a Check field in DocType 'DocField'
 #. Label of a Check field in DocType 'Custom Field'
