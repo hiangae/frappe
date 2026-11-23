@@ -13511,7 +13511,7 @@ msgstr "{1} 중 {0} 가져오는 중, {2}"
 
 #: frappe/public/js/frappe/ui/filters/filter.js:20
 msgid "In"
-msgstr "내"
+msgstr "포함"
 
 #. Description of the 'Force User to Reset Password' (Int) field in DocType
 #. 'System Settings'
@@ -15592,7 +15592,7 @@ msgstr "라이트 테마"
 #: frappe/core/doctype/communication/communication.json:169
 #: frappe/public/js/frappe/ui/filters/filter.js:18
 msgid "Like"
-msgstr "좋아요"
+msgstr "비슷함"
 
 #. Label of a Int field in DocType 'Blog Settings'
 #: frappe/website/doctype/blog_settings/blog_settings.json:122
